@@ -20,6 +20,7 @@ import {
   RefreshTokenDocument,
 } from "./schemas/refresh-token.schema";
 import { OtpRequest, OtpRequestDocument } from "./schemas/otp-request.schema";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly refreshTokens: Model<RefreshTokenDocument>,
     @InjectModel(OtpRequest.name)
     private readonly otpRequests: Model<OtpRequestDocument>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ─────────────────────────────── Customer: OTP ───────────────────────────
@@ -54,9 +56,10 @@ export class AuthService {
       { consumed: true },
     );
 
+    const length = this.config.get<number>("OTP_LENGTH", 4);
     const code = this.config.get<boolean>("OTP_DEV_MODE", true)
-      ? this.config.get<string>("OTP_DEV_CODE", "000000")
-      : String(randomInt(100000, 1000000));
+      ? this.config.get<string>("OTP_DEV_CODE", "0000")
+      : String(randomInt(0, 10 ** length)).padStart(length, "0");
 
     await this.otpRequests.create({
       mobile,
@@ -104,9 +107,11 @@ export class AuthService {
     otp.consumed = true;
     await otp.save();
 
-    const customer =
-      (await this.customers.findOne({ mobile })) ??
-      (await this.customers.create({ mobile, name: "" }));
+    let customer = await this.customers.findOne({ mobile });
+    if (!customer) {
+      customer = await this.customers.create({ mobile, name: "" });
+      await this.notifications.welcome(customer.id);
+    }
 
     const tokens = await this.issueTokens({
       sub: customer.id,
@@ -119,6 +124,8 @@ export class AuthService {
         id: customer.id,
         name: customer.name,
         mobile: customer.mobile,
+        // Mobile app routes to Create Profile when this is false (FR-CUS-07).
+        profileComplete: Boolean(customer.profileCompletedAt),
       },
     };
   }

@@ -17,6 +17,23 @@ export class StaffService {
     return this.staff.findById(id).lean();
   }
 
+  /** Active staff (not admins) an application can be assigned to — FR-PTR-12. */
+  listAssignable() {
+    return this.staff.find({ active: true, role: Role.Staff }).lean();
+  }
+
+  /** Contact card for the customer's "point of contact" — FR-CUS-20 / C-11. */
+  async contactCard(staffId: string) {
+    const s = await this.staff.findById(staffId).lean();
+    if (!s) return null;
+    return {
+      id: String(s._id),
+      name: s.name,
+      phone: s.phone,
+      staffRole: s.staffRole ?? null,
+    };
+  }
+
   /** FR-ADM-10 — list all staff with role + assigned customer count. */
   list(): Promise<never> {
     // TODO(FR-ADM-10, FR-ADM-13): join assigned-application counts + monthly closures.
@@ -40,15 +57,5 @@ export class StaffService {
       role: Role.Staff,
       staffRole: dto.staffRole,
     });
-  }
-
-  /**
-   * Pick the staff member a new application is assigned to (FR-PTR-12,
-   * Journey B step 6). Placeholder = least-loaded active LOAN_OFFICER;
-   * confirm the rule with the business.
-   */
-  pickAssignee(): Promise<never> {
-    // TODO(assignment rule): round-robin vs least-loaded — see PRD open items.
-    throw new NotImplementedException("staff.pickAssignee — not built");
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, Length, Matches } from "class-validator";
+import { IsNumberString, IsString, Length, Matches } from "class-validator";
 
 export class VerifyOtpDto {
   @ApiProperty({ example: "9876543210" })
@@ -7,8 +7,9 @@ export class VerifyOtpDto {
   @Matches(/^[6-9]\d{9}$/)
   mobile!: string;
 
-  @ApiProperty({ example: "000000" })
-  @IsString()
-  @Length(6, 6)
+  /** 4-digit numeric code — matches the mobile app OTP screen (4 boxes). */
+  @ApiProperty({ example: "0000", minLength: 4, maxLength: 4 })
+  @IsNumberString()
+  @Length(4, 4)
   code!: string;
 }

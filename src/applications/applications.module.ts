@@ -4,10 +4,20 @@ import { ApplicationsService } from "./applications.service";
 import { ApplicationsController } from "./applications.controller";
 import { Application, ApplicationSchema } from "./schemas/application.schema";
 import { AuditModule } from "../audit/audit.module";
+import { CatalogueModule } from "../catalogue/catalogue.module";
+import { DocumentsModule } from "../documents/documents.module";
+import { MessagingModule } from "../messaging/messaging.module";
+import { CustomersModule } from "../customers/customers.module";
+import { StaffModule } from "../staff/staff.module";
 
 @Module({
   imports: [
     AuditModule,
+    CatalogueModule,
+    DocumentsModule,
+    MessagingModule,
+    CustomersModule,
+    StaffModule,
     MongooseModule.forFeature([
       { name: Application.name, schema: ApplicationSchema },
     ]),

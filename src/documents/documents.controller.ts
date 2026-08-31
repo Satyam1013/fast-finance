@@ -1,13 +1,30 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString } from "class-validator";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
+import { IsEnum, IsIn, IsOptional, IsString } from "class-validator";
 import { DocumentsService } from "./documents.service";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
-import { Role } from "../common/constants";
+import { DocumentType, Role } from "../common/constants";
+import {
+  uploadOptions,
+  type UploadedFile as Upload,
+} from "../common/util/upload";
 
+class UploadDocumentDto {
+  @IsEnum(DocumentType) type!: DocumentType;
+}
 class ManualBankDto {
   @IsString() accountNumber!: string;
   @IsString() reEnteredAccountNumber!: string;
@@ -27,7 +44,29 @@ export class DocumentsController {
   /** FR-CUS-09 — checklist for an application. */
   @Get("applications/:id/documents")
   checklist(@Param("id") id: string) {
-    return this.documents.checklist(id);
+    return this.documents.checklistView(id);
+  }
+
+  /** FR-CUS-10 — upload one checklist document (PAN/Aadhaar/Selfie/Address/Salary). */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer)
+  @Post("applications/:id/documents")
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FileInterceptor("file", uploadOptions))
+  upload(
+    @Param("id") id: string,
+    @Body() dto: UploadDocumentDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    const upload: Upload | undefined = file
+      ? {
+          buffer: file.buffer,
+          mimetype: file.mimetype,
+          size: file.size,
+          originalname: file.originalname,
+        }
+      : undefined;
+    return this.documents.upload(id, dto.type, upload);
   }
 
   @UseGuards(RolesGuard)
