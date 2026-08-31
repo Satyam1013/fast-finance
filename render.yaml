@@ -1,0 +1,75 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploys the API from the `develop` branch. MongoDB is NOT provisioned here
+# (Render has no managed MongoDB) — create a free MongoDB Atlas cluster and set
+# MONGODB_URI in the Render dashboard.
+#
+# First deploy:
+#   1. Render Dashboard → New → Blueprint → pick this repo, branch `develop`.
+#   2. Fill the `sync: false` vars when prompted (MONGODB_URI, ALLOWED_ORIGINS,
+#      PUBLIC_ASSET_BASE_URL — the last is https://<service>.onrender.com/api/v1/files).
+#   3. After it's live, run the seed once from a local shell pointed at the same
+#      MONGODB_URI:  npm run seed
+services:
+  - type: web
+    name: fast-finance-api
+    runtime: node
+    plan: free
+    branch: develop
+    autoDeploy: true
+    # --include=dev: nest build needs devDependencies even with NODE_ENV=production
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000" # Render overrides this with its own port; main.ts reads process.env.PORT
+
+      # ── Database — set in dashboard (MongoDB Atlas connection string) ──
+      - key: MONGODB_URI
+        sync: false
+
+      # ── Auth ──
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "30"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+
+      # CORS — comma-separated origins of the PWA / admin panel
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+      # ── OTP — dev mode until an SMS provider is chosen (PRD Open Question #5) ──
+      - key: OTP_DEV_MODE
+        value: "true"
+      - key: OTP_DEV_CODE
+        value: "0000"
+      - key: OTP_LENGTH
+        value: "4"
+      - key: OTP_TTL_SECONDS
+        value: "300"
+
+      # ── File storage — local disk is EPHEMERAL on Render (lost on redeploy /
+      #    restart). Fine for testing; switch STORAGE_DRIVER to s3 before real use. ──
+      - key: STORAGE_DRIVER
+        value: local
+      - key: PUBLIC_ASSET_BASE_URL
+        sync: false
+
+      # ── Feature flags / misc ──
+      - key: FEATURE_ACCOUNT_AGGREGATOR
+        value: "false"
+      - key: GST_RATE_PERCENT
+        value: "18"
+      - key: SUPPORT_PHONE
+        sync: false
+      - key: SUPPORT_RESPONSE_LABEL
+        value: Our team responds within 5 minutes

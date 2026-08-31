@@ -24,15 +24,19 @@ code comments.
 cp .env.example .env          # then set JWT_SECRET
 npm install
 npm run infra:up              # MongoDB + mongo-express on :8081
-npm run seed                  # admin@fastfinance.in / admin12345, demo products, FFP-DEMO1
+npm run seed                  # see logins below + products, FAQs, a lender, FFP-DEMO1
 npm run start:dev             # http://localhost:4000/api/v1  (docs: /api/v1/docs)
+npm test                      # unit specs (emi, stage tracker, masking)
 ```
+
+Seed logins: `admin@fastfinance.in` / `admin12345` · `officer@fastfinance.in` /
+`officer12345` (a Loan Officer — applications need an assignee).
 
 ## Login modes (PRD §2.2)
 
 | Role | Endpoint | Credential |
 |---|---|---|
-| Customer | `POST /auth/otp/request` → `POST /auth/otp/verify` | mobile + OTP (`OTP_DEV_CODE` in dev) |
+| Customer | `POST /auth/otp/request` → `POST /auth/otp/verify` | mobile + 4-digit OTP (`OTP_DEV_CODE=0000` in dev) |
 | Partner | `POST /auth/partner/login` | partner code (`FFP-XXXX`) |
 | Staff / Admin | `POST /auth/staff/login` | email + password |
 
@@ -42,16 +46,22 @@ All three return `{ accessToken, refreshToken }`. Rotate via `POST /auth/refresh
 
 | Module | Covers | State |
 |---|---|---|
-| `common/constants` | Stage enum, Role Access Matrix, document types | ✅ done |
-| `auth` | 3 login flows, JWT strategy, refresh rotation | ✅ done |
-| `catalogue` | products/services CRUD, activate/deactivate | ✅ done |
+| `common/constants` | Stage enum + tracker, Role Access Matrix, document types | ✅ done |
+| `auth` | 3 login flows, JWT strategy, refresh rotation, 4-digit OTP | ✅ done |
+| `catalogue` | products/services CRUD, card shaping | ✅ done |
 | `events` | SSE fan-out for "reflect without refresh" | ✅ wired |
 | `audit` | append-only trail (PRD A-13) | ✅ wired |
-| `applications` | lifecycle, stage transitions, duplicate-check, submission gate | 🚧 skeleton + rules documented |
-| `documents` | upload, verify, manual bank entry, AA (flagged) | 🚧 skeleton |
+| `storage` | local-disk file store + `/files/*` + `/admin/assets` | ✅ done (S3 driver = TODO) |
+| `customers` | profile create/edit/view, masked KYC | ✅ customer path done |
+| `applications` | list, detail + tracker, start/resume, submit, advance/revert/reject | ✅ customer + core staff path |
+| `documents` | upload, checklist, manual bank, staff verify/reject | ✅ done (AA flagged off) |
+| `messaging` | customer↔staff chat + system stage messages | ✅ done |
+| `notifications` | per-user centre + domain-event fan-out | ✅ done |
+| `support` | FAQs + contact block | ✅ done |
+| `content` | banners, gallery, lenders + pincode search | ✅ done |
+| `tools` | `POST /tools/emi` reducing-balance calculator | ✅ done |
 | `commission` | calculate-once-on-disbursal, earnings | 🚧 skeleton (pure `compute()` done) |
-| `messaging` | chat + system stage messages | 🚧 skeleton (`postSystem` done) |
-| `customers` `partners` `staff` | records + management | 🚧 skeleton (`partners.onboard`, `staff.create` done) |
+| `partners` `staff` | records + management | 🚧 skeleton (`partners.onboard`, `staff.create`, `staff.pickAssignee` done) |
 | `gst` | monthly ledger, GST calc | 🚧 skeleton (`gstOn()` done) |
 | `reports` | 5 report types, PDF + Excel export | 🚧 skeleton |
 | `admin` | dashboard KPIs, reassignment | 🚧 skeleton (`overview` partial) |
@@ -77,7 +87,20 @@ All three return `{ accessToken, refreshToken }`. Rotate via `POST /auth/refresh
 - commission computed once at disbursal and persisted with a snapshot of the rate
 - manual bank-statement path is fully supported; AA sits behind `FEATURE_ACCOUNT_AGGREGATOR`
 
+## Deploy (Render)
+
+`render.yaml` is a Blueprint for the **`develop`** branch. MongoDB is not
+provisioned by it — use a free MongoDB Atlas cluster and set `MONGODB_URI` in
+the Render dashboard along with the other `sync: false` vars
+(`ALLOWED_ORIGINS`, `PUBLIC_ASSET_BASE_URL`, `SUPPORT_PHONE`).
+
+Branch flow: `feat/*` → `develop` (Render preview) → `main`.
+
+⚠️ `STORAGE_DRIVER=local` on Render is ephemeral — uploaded KYC files are lost
+on redeploy. Fine for testing; wire the S3 driver before real use.
+
 ## Open items blocking work (FRS §13 / PRD §14)
 
 SMS/OTP provider · Account Aggregator provider · GST rate · commission rates per
-product · lender/branch dataset for pincode search · staff auto-assignment rule.
+product · lender/branch dataset for pincode search · **"Type of Employment"
+option list** (`EmploymentCategory` is a placeholder) · S3 storage driver.
