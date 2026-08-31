@@ -5,14 +5,35 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Length,
   Min,
 } from "class-validator";
-import { CommissionType } from "../schemas/product.schema";
+import { CommissionType, ProductKind } from "../schemas/product.schema";
 
 export class CreateProductDto {
   @ApiProperty({ example: "Personal Loan" })
   @IsString()
   name!: string;
+
+  @ApiPropertyOptional({
+    example: "PL",
+    description:
+      "Code used in Application IDs. Derived from the name if omitted.",
+  })
+  @IsOptional()
+  @IsString()
+  @Length(2, 6)
+  code?: string;
+
+  @ApiPropertyOptional({ enum: ProductKind, default: ProductKind.Loan })
+  @IsOptional()
+  @IsEnum(ProductKind)
+  kind?: ProductKind;
+
+  @ApiPropertyOptional({ example: "Life, Health, Vehicle" })
+  @IsOptional()
+  @IsString()
+  subtitle?: string;
 
   @ApiProperty({ example: 10.5 })
   @IsNumber()

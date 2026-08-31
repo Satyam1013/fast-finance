@@ -11,6 +11,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 // Infrastructure
 import { EventsModule } from "./events/events.module";
 import { AuditModule } from "./audit/audit.module";
+import { StorageModule } from "./storage/storage.module";
 import { HealthModule } from "./health/health.module";
 
 // Feature modules
@@ -23,6 +24,10 @@ import { ApplicationsModule } from "./applications/applications.module";
 import { DocumentsModule } from "./documents/documents.module";
 import { CommissionModule } from "./commission/commission.module";
 import { MessagingModule } from "./messaging/messaging.module";
+import { NotificationsModule } from "./notifications/notifications.module";
+import { SupportModule } from "./support/support.module";
+import { ContentModule } from "./content/content.module";
+import { ToolsModule } from "./tools/tools.module";
 import { GstModule } from "./gst/gst.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
@@ -45,6 +50,7 @@ import { AdminModule } from "./admin/admin.module";
     // Infrastructure
     EventsModule,
     AuditModule,
+    StorageModule,
     HealthModule,
 
     // Features
@@ -57,6 +63,10 @@ import { AdminModule } from "./admin/admin.module";
     DocumentsModule,
     CommissionModule,
     MessagingModule,
+    NotificationsModule,
+    SupportModule,
+    ContentModule,
+    ToolsModule,
     GstModule,
     ReportsModule,
     AdminModule,

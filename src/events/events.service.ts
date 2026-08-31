@@ -11,6 +11,8 @@ export interface DomainEvent {
     | "message.created"
     | "commission.calculated";
   applicationId?: string;
+  /** The customer this application belongs to — used for notification fan-out. */
+  customerId?: string;
   payload: Record<string, unknown>;
 }
 
@@ -29,6 +31,11 @@ export class EventsService {
 
   publish(event: DomainEvent) {
     this.stream$.next(event);
+  }
+
+  /** Raw stream — for in-process consumers (e.g. notification fan-out). */
+  stream(): Observable<DomainEvent> {
+    return this.stream$.asObservable();
   }
 
   /** SSE stream scoped to one subject id. */
