@@ -22,7 +22,9 @@ export const envValidationSchema = Joi.object({
 
   OTP_TTL_SECONDS: Joi.number().default(300),
   OTP_DEV_MODE: Joi.boolean().default(true),
-  OTP_DEV_CODE: Joi.string().default("000000"),
+  // Digit count for customer login OTP — 4 matches the mobile app OTP screen.
+  OTP_LENGTH: Joi.number().integer().min(4).max(8).default(4),
+  OTP_DEV_CODE: Joi.string().pattern(/^\d+$/).default("0000"),
   SMS_PROVIDER: Joi.string().allow("").default(""),
   SMS_API_KEY: Joi.string().allow("").default(""),
 
@@ -34,6 +36,9 @@ export const envValidationSchema = Joi.object({
   AA_CLIENT_SECRET: Joi.string().allow("").default(""),
 
   STORAGE_DRIVER: Joi.string().valid("local", "s3").default("local"),
+  PUBLIC_ASSET_BASE_URL: Joi.string()
+    .allow("")
+    .default("http://localhost:4000/api/v1/files"),
   S3_ENDPOINT: Joi.string().allow("").default(""),
   S3_REGION: Joi.string().allow("").default(""),
   S3_BUCKET: Joi.string().allow("").default(""),
@@ -42,4 +47,12 @@ export const envValidationSchema = Joi.object({
 
   GST_RATE_PERCENT: Joi.number().default(18),
   GSTIN: Joi.string().allow("").default(""),
+
+  // ─── Support screen (FR-CUS-22) ───
+  SUPPORT_PHONE: Joi.string().allow("").default(""),
+  SUPPORT_WHATSAPP: Joi.string().allow("").default(""),
+  SUPPORT_EMAIL: Joi.string().allow("").default(""),
+  SUPPORT_RESPONSE_LABEL: Joi.string()
+    .allow("")
+    .default("Our team responds within 5 minutes"),
 });

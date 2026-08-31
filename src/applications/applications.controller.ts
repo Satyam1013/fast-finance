@@ -27,6 +27,12 @@ export class ApplicationsController {
     return this.applications.listForCaller(user);
   }
 
+  /** FR-CUS-15/16/20 — one application with the 7-stage tracker, scoped by role. */
+  @Get(":id")
+  get(@Param("id") id: string, @CurrentUser() user: AuthUser) {
+    return this.applications.getForCaller(id, user);
+  }
+
   /** FR-CUS-03/04 — start (or resume) an application for a product. */
   @UseGuards(RolesGuard)
   @Roles(Role.Customer)

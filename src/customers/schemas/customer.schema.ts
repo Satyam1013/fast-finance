@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
+import { EmploymentCategory } from "../../common/constants";
 
 export type CustomerDocument = HydratedDocument<Customer> & {
   createdAt: Date;
@@ -29,16 +30,48 @@ export class Customer {
   @Prop()
   dob?: Date;
 
+  // ── Create Profile screen — FR-CUS-07 ──
+
+  /** "Type of Employment" dropdown. Binary split derived at application time. */
+  @Prop({ type: String, enum: EmploymentCategory })
+  employmentCategory?: EmploymentCategory;
+
+  @Prop({ trim: true })
+  state?: string;
+
+  @Prop({ trim: true })
+  city?: string;
+
+  /** Used for the nearest-lender pincode search — FR-CUS-05. */
+  @Prop({ index: true })
+  pincode?: string;
+
+  // ── Stored file keys (served via /files/<key>) ──
+
+  /** Profile picture — required on the Create Profile screen. */
+  @Prop()
+  photoRef?: string;
+
+  @Prop()
+  aadhaarFrontRef?: string;
+
+  @Prop()
+  aadhaarBackRef?: string;
+
+  @Prop()
+  panCardRef?: string;
+
   // TODO(security): encrypt before persist, decrypt on read; never log.
+  // Captured later (OCR / manual) — the Create Profile screen only takes scans.
   @Prop({ select: false })
   aadhaar?: string;
 
   @Prop({ select: false })
   pan?: string;
 
-  /** Used for the nearest-lender pincode search — FR-CUS-05. */
-  @Prop({ index: true })
-  pincode?: string;
+  /** Set once the mandatory Create-Profile fields are all present. */
+  @Prop()
+  profileCompletedAt?: Date;
 
   /**
    * Set when this same person is also a partner (DSA who takes a personal

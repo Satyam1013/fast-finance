@@ -64,3 +64,51 @@ export const STAGE_CUSTOMER_MESSAGE: Record<Stage, string> = {
   [Stage.Disbursed]:
     "Your loan amount has been disbursed. This application is now closed.",
 };
+
+/** Short label the mobile app shows above each tracker step (matches the mock). */
+export const STAGE_SHORT_LABELS: Record<Stage, string> = {
+  [Stage.ApplicationSubmitted]: "Application",
+  [Stage.CreditEvaluation]: "Credit Evaluation",
+  [Stage.LoanOffer]: "Loan Offer",
+  [Stage.AdditionalDocuments]: "Additional Document",
+  [Stage.NachKycAgreement]: "NACH, KYC & Agreement",
+  [Stage.FinalReview]: "Final Review",
+  [Stage.Disbursed]: "Disbursed",
+};
+
+export type StageStepStatus = "completed" | "current" | "pending";
+
+export interface StageStep {
+  stage: number;
+  step: number;
+  label: string;
+  status: StageStepStatus;
+}
+
+/**
+ * The 7-step tracker for a given application state — FR-CUS-15. A rejected
+ * application freezes: the stage it was rejected at is "current", earlier steps
+ * "completed", later steps "pending" (rejection is shown separately — §3.1).
+ */
+export function buildStageTracker(
+  currentStage: number,
+  isRejected = false,
+): StageStep[] {
+  const stages = (
+    Object.values(Stage).filter((v) => typeof v === "number") as number[]
+  ).sort((a, b) => a - b);
+
+  return stages.map((stage) => {
+    let status: StageStepStatus;
+    if (stage < currentStage) status = "completed";
+    else if (stage > currentStage) status = "pending";
+    else if (stage === FINAL_STAGE && !isRejected) status = "completed";
+    else status = "current";
+    return {
+      stage,
+      step: stage,
+      label: STAGE_SHORT_LABELS[stage as Stage],
+      status,
+    };
+  });
+}

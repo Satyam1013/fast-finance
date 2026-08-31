@@ -6,9 +6,11 @@ import {
   DocumentEntity,
   DocumentEntitySchema,
 } from "./schemas/document.schema";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
+    AuditModule,
     MongooseModule.forFeature([
       { name: DocumentEntity.name, schema: DocumentEntitySchema },
     ]),

@@ -14,11 +14,13 @@ import { OtpRequest, OtpRequestSchema } from "./schemas/otp-request.schema";
 import { Customer, CustomerSchema } from "../customers/schemas/customer.schema";
 import { Partner, PartnerSchema } from "../partners/schemas/partner.schema";
 import { Staff, StaffSchema } from "../staff/schemas/staff.schema";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
     PassportModule,
     ConfigModule,
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: OtpRequest.name, schema: OtpRequestSchema },

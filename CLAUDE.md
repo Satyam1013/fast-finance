@@ -39,6 +39,38 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Manual bank entry validates `accountNumber === reEnteredAccountNumber` before
   persist; re-entry is not stored. AA path is behind `FEATURE_ACCOUNT_AGGREGATOR`.
 
+## Customer app surface (built against the Figma mock)
+
+- Login OTP is **4 digits** (`OTP_LENGTH`, mock has 4 boxes). No guest mode.
+- Application ID format is `FF-<PRODUCT_CODE>-<YYMMDD>-<NNNN>` (matches the mock),
+  generated in `ApplicationsService`. `Product.code` is required + unique.
+- Create Profile (`POST /me/profile`, multipart) captures name/email/employment/
+  state/city + 4 files (photo, aadhaarFront, aadhaarBack, panCard) into
+  `Customer`. `startOrResume` refuses until `profileCompletedAt` is set.
+  `GET /me/profile` returns masked Aadhaar/PAN (`common/util/mask.ts`).
+- `GET /applications/:id` is the tracker screen: `buildStageTracker()` 7-step
+  array + `STAGE_CUSTOMER_MESSAGE` + checklist + assigned-staff contact card.
+- KYC files land on disk via `StorageService` (local driver), served by
+  `GET /files/*key` (auth required; per-record scoping is a TODO). Admin uploads
+  CMS images via `POST /admin/assets` then references the returned key.
+- `NotificationsService` subscribes to `EventsService.stream()` and fans
+  `stage.changed` / `application.rejected` out to per-customer rows — publishers
+  still publish once.
+- Home extras: `POST /tools/emi` (pure), `content` module (banners / gallery /
+  lenders + `content/lenders/search?pincode=`), `support` module (FAQs + contact
+  from `SUPPORT_*` env).
+
+### Still needs the business (mock is ahead of the FRS here)
+
+- `EmploymentCategory` enum is a guess — confirm the real "Type of Employment"
+  list. Binary `EmploymentType` (for eligibility) is derived via
+  `employmentTypeFor()`.
+- `Customer` gained `state`/`city`/`photoRef`/`employmentCategory` — not in
+  FRS §9.3, driven by the Create Profile screen.
+- Document verify/reject does not yet fan an event/notification (applications ⇄
+  documents boundary is one-way to avoid a module cycle) — see the TODO in
+  `DocumentsService.review`.
+
 ## Money & formatting
 
 Store amounts as plain numbers in rupees for now; if precision bites, switch to
@@ -46,5 +78,9 @@ integer paise. Indian digit grouping is a client concern (NFR-06).
 
 ## Commands
 
-`npm run start:dev` · `npm run typecheck` · `npm run lint` · `npm run seed` ·
-`npm run infra:up`
+`npm run start:dev` · `npm run typecheck` · `npm run lint` · `npm test` ·
+`npm run seed` · `npm run infra:up`
+
+Seed creates: admin (`admin@fastfinance.in` / `admin12345`), a loan officer
+(`officer@fastfinance.in` / `officer12345` — applications need an assignee),
+6 products, a partner, 5 FAQs, 1 lender.
