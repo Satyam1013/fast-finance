@@ -25,8 +25,15 @@ export const envValidationSchema = Joi.object({
   // Digit count for customer login OTP — 4 matches the mobile app OTP screen.
   OTP_LENGTH: Joi.number().integer().min(4).max(8).default(4),
   OTP_DEV_CODE: Joi.string().pattern(/^\d+$/).default("0000"),
-  SMS_PROVIDER: Joi.string().allow("").default(""),
-  SMS_API_KEY: Joi.string().allow("").default(""),
+
+  // Delivery channel when OTP_DEV_MODE=false. WhatsApp only (no SMS).
+  OTP_CHANNEL: Joi.string().valid("dev", "whatsapp").default("dev"),
+  MACROPAGE_CONNECT_BASE_URL: Joi.string().allow("").default(""),
+  MACROPAGE_CONNECT_API_KEY: Joi.string().allow("").default(""),
+  MACROPAGE_CONNECT_OTP_TEMPLATE: Joi.string().allow("").default(""),
+  MACROPAGE_CONNECT_SENDER: Joi.string().allow("").default(""),
+  MACROPAGE_CONNECT_TEMPLATE_LANG: Joi.string().default("en"),
+  MACROPAGE_CONNECT_COUNTRY_CODE: Joi.string().default("91"),
 
   PARTNER_CODE_PREFIX: Joi.string().default("FFP"),
 

@@ -21,6 +21,7 @@ import {
 } from "./schemas/refresh-token.schema";
 import { OtpRequest, OtpRequestDocument } from "./schemas/otp-request.schema";
 import { NotificationsService } from "../notifications/notifications.service";
+import { CommsService } from "../comms/comms.service";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
@@ -41,6 +42,7 @@ export class AuthService {
     @InjectModel(OtpRequest.name)
     private readonly otpRequests: Model<OtpRequestDocument>,
     private readonly notifications: NotificationsService,
+    private readonly comms: CommsService,
   ) {}
 
   // ─────────────────────────────── Customer: OTP ───────────────────────────
@@ -56,8 +58,9 @@ export class AuthService {
       { consumed: true },
     );
 
+    const devMode = this.config.get<boolean>("OTP_DEV_MODE", true);
     const length = this.config.get<number>("OTP_LENGTH", 4);
-    const code = this.config.get<boolean>("OTP_DEV_MODE", true)
+    const code = devMode
       ? this.config.get<string>("OTP_DEV_CODE", "0000")
       : String(randomInt(0, 10 ** length)).padStart(length, "0");
 
@@ -67,12 +70,15 @@ export class AuthService {
       expiresAt: new Date(Date.now() + ttl * 1000),
     });
 
-    // TODO(FR-CUS / PRD OQ#5): send via SMS provider once chosen.
-    if (this.config.get<boolean>("OTP_DEV_MODE", true)) {
+    // Dev mode short-circuits delivery and echoes the fixed code.
+    if (devMode) {
       this.logger.warn(`DEV OTP for ${mobile}: ${code}`);
       return { success: true, devCode: code };
     }
-    return { success: true };
+
+    // Real delivery — WhatsApp via MacroPage Connect (OTP_CHANNEL).
+    const result = await this.comms.sendOtp(mobile, code);
+    return { success: true, devCode: result.devCode };
   }
 
   async verifyOtp(mobile: string, code: string): Promise<AuthResult> {

@@ -47,7 +47,10 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
 
-      # ── OTP — dev mode until an SMS provider is chosen (PRD Open Question #5) ──
+      # ── OTP ──
+      # Keep dev mode on until MacroPage Connect creds are set, then flip
+      # OTP_DEV_MODE=false (OTP_CHANNEL is already whatsapp) and add the
+      # MACROPAGE_CONNECT_* vars in the dashboard.
       - key: OTP_DEV_MODE
         value: "true"
       - key: OTP_DEV_CODE
@@ -56,6 +59,16 @@ services:
         value: "4"
       - key: OTP_TTL_SECONDS
         value: "300"
+      - key: OTP_CHANNEL
+        value: whatsapp
+      - key: MACROPAGE_CONNECT_BASE_URL
+        sync: false
+      - key: MACROPAGE_CONNECT_API_KEY
+        sync: false
+      - key: MACROPAGE_CONNECT_OTP_TEMPLATE
+        sync: false
+      - key: MACROPAGE_CONNECT_SENDER
+        sync: false
 
       # ── File storage — local disk is EPHEMERAL on Render (lost on redeploy /
       #    restart). Fine for testing; switch STORAGE_DRIVER to s3 before real use. ──

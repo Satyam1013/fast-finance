@@ -1,9 +1,4 @@
-import {
-  maskAadhaar,
-  maskAccountNumber,
-  maskMobile,
-  maskPan,
-} from "./mask";
+import { maskAadhaar, maskAccountNumber, maskMobile, maskPan } from "./mask";
 
 describe("mask helpers", () => {
   it("masks Aadhaar to the last 4 digits", () => {

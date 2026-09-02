@@ -101,6 +101,8 @@ on redeploy. Fine for testing; wire the S3 driver before real use.
 
 ## Open items blocking work (FRS §13 / PRD §14)
 
-SMS/OTP provider · Account Aggregator provider · GST rate · commission rates per
-product · lender/branch dataset for pincode search · **"Type of Employment"
-option list** (`EmploymentCategory` is a placeholder) · S3 storage driver.
+MacroPage Connect API contract (WhatsApp OTP — `CommsService` has the wiring,
+needs the real endpoint/payload) · Account Aggregator provider · GST rate ·
+commission rates per product · lender/branch dataset for pincode search ·
+**"Type of Employment" option list** (`EmploymentCategory` is a placeholder) ·
+S3 storage driver.
