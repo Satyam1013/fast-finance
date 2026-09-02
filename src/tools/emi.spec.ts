@@ -13,7 +13,11 @@ describe("computeEmi", () => {
   });
 
   it("degrades to straight-line repayment at 0% interest", () => {
-    const r = computeEmi({ principal: 120000, annualRate: 0, tenureMonths: 12 });
+    const r = computeEmi({
+      principal: 120000,
+      annualRate: 0,
+      tenureMonths: 12,
+    });
     expect(r.emi).toBe(10000);
     expect(r.totalInterest).toBe(0);
     expect(r.totalAmount).toBe(120000);

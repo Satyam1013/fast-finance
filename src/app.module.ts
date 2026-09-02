@@ -12,6 +12,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { EventsModule } from "./events/events.module";
 import { AuditModule } from "./audit/audit.module";
 import { StorageModule } from "./storage/storage.module";
+import { CommsModule } from "./comms/comms.module";
 import { HealthModule } from "./health/health.module";
 
 // Feature modules
@@ -51,6 +52,7 @@ import { AdminModule } from "./admin/admin.module";
     EventsModule,
     AuditModule,
     StorageModule,
+    CommsModule,
     HealthModule,
 
     // Features

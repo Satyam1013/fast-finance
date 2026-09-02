@@ -7,8 +7,8 @@ export type OtpRequestDocument = HydratedDocument<OtpRequest> & {
 
 /**
  * Customer login OTP — FR-CUS (mobile + OTP). The code is stored hashed.
- * Rate-limit issuance per mobile in the service; the SMS provider is not yet
- * chosen (PRD Open Question #5) so OTP_DEV_MODE short-circuits delivery.
+ * Rate-limit issuance per mobile in the service. Delivery is WhatsApp via
+ * MacroPage Connect (CommsService); OTP_DEV_MODE short-circuits it in dev.
  */
 @Schema({
   timestamps: { createdAt: true, updatedAt: false },

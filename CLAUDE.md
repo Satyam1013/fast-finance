@@ -42,6 +42,10 @@ are separate deliverables built by others against this API's OpenAPI spec
 ## Customer app surface (built against the Figma mock)
 
 - Login OTP is **4 digits** (`OTP_LENGTH`, mock has 4 boxes). No guest mode.
+  Delivery is WhatsApp-only via `CommsService` (`OTP_CHANNEL=whatsapp` →
+  MacroPage Connect, the in-house platform). `OTP_DEV_MODE=true` skips sending
+  and echoes `OTP_DEV_CODE`. No SMS path. The MacroPage Connect request contract
+  in `comms.service.ts` is a Meta-Cloud-API-shaped guess — confirm + adjust.
 - Application ID format is `FF-<PRODUCT_CODE>-<YYMMDD>-<NNNN>` (matches the mock),
   generated in `ApplicationsService`. `Product.code` is required + unique.
 - Create Profile (`POST /me/profile`, multipart) captures name/email/employment/

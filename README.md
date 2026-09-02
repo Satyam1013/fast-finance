@@ -102,6 +102,7 @@ anything beyond a throwaway test.
 
 ## Open items blocking work (FRS §13 / PRD §14)
 
-SMS/OTP provider · Account Aggregator provider · GST rate · commission rates per
-product · lender/branch dataset for pincode search · **"Type of Employment"
-option list** (`EmploymentCategory` is a placeholder).
+MacroPage Connect API contract (WhatsApp OTP — `CommsService` has the wiring,
+needs the real endpoint/payload) · Account Aggregator provider · GST rate ·
+commission rates per product · lender/branch dataset for pincode search ·
+**"Type of Employment" option list** (`EmploymentCategory` is a placeholder).
