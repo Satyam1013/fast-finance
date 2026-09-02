@@ -44,8 +44,8 @@ export class FilesController {
   }
 
   @Get("files/*key")
-  get(@Param("key") key: string | string[]): StreamableFile {
+  async get(@Param("key") key: string | string[]): Promise<StreamableFile> {
     const path = Array.isArray(key) ? key.join("/") : key;
-    return new StreamableFile(this.storage.stream(path));
+    return new StreamableFile(await this.storage.stream(path));
   }
 }

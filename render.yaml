@@ -70,11 +70,23 @@ services:
       - key: MACROPAGE_CONNECT_SENDER
         sync: false
 
-      # ── File storage — local disk is EPHEMERAL on Render (lost on redeploy /
-      #    restart). Fine for testing; switch STORAGE_DRIVER to s3 before real use. ──
+      # ── File storage ──
+      # local disk is EPHEMERAL on Render (lost on every redeploy). Set
+      # STORAGE_DRIVER=s3 and fill the S3_* vars (DigitalOcean Spaces) in the
+      # dashboard for anything that must persist.
       - key: STORAGE_DRIVER
         value: local
       - key: PUBLIC_ASSET_BASE_URL
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
         sync: false
 
       # ── Feature flags / misc ──
