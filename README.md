@@ -51,7 +51,7 @@ All three return `{ accessToken, refreshToken }`. Rotate via `POST /auth/refresh
 | `catalogue` | products/services CRUD, card shaping | ✅ done |
 | `events` | SSE fan-out for "reflect without refresh" | ✅ wired |
 | `audit` | append-only trail (PRD A-13) | ✅ wired |
-| `storage` | local-disk file store + `/files/*` + `/admin/assets` | ✅ done (S3 driver = TODO) |
+| `storage` | `local` + `s3` (DO Spaces) drivers, `/files/*` proxy, `/admin/assets` | ✅ done |
 | `customers` | profile create/edit/view, masked KYC | ✅ customer path done |
 | `applications` | list, detail + tracker, start/resume, submit, advance/revert/reject | ✅ customer + core staff path |
 | `documents` | upload, checklist, manual bank, staff verify/reject | ✅ done (AA flagged off) |
@@ -96,11 +96,12 @@ the Render dashboard along with the other `sync: false` vars
 
 Branch flow: `feat/*` → `develop` (Render preview) → `main`.
 
-⚠️ `STORAGE_DRIVER=local` on Render is ephemeral — uploaded KYC files are lost
-on redeploy. Fine for testing; wire the S3 driver before real use.
+⚠️ `STORAGE_DRIVER=local` on Render is ephemeral — uploaded files are lost on
+redeploy. Set `STORAGE_DRIVER=s3` with the `S3_*` vars (DigitalOcean Spaces) for
+anything beyond a throwaway test.
 
 ## Open items blocking work (FRS §13 / PRD §14)
 
 SMS/OTP provider · Account Aggregator provider · GST rate · commission rates per
 product · lender/branch dataset for pincode search · **"Type of Employment"
-option list** (`EmploymentCategory` is a placeholder) · S3 storage driver.
+option list** (`EmploymentCategory` is a placeholder).
