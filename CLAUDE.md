@@ -50,8 +50,9 @@ are separate deliverables built by others against this API's OpenAPI spec
   `GET /me/profile` returns masked Aadhaar/PAN (`common/util/mask.ts`).
 - `GET /applications/:id` is the tracker screen: `buildStageTracker()` 7-step
   array + `STAGE_CUSTOMER_MESSAGE` + checklist + assigned-staff contact card.
-- KYC files land on disk via `StorageService` (local driver), served by
-  `GET /files/*key` (auth required; per-record scoping is a TODO). Admin uploads
+- `StorageService` picks a driver from `STORAGE_DRIVER` (`local` → `./uploads`,
+  `s3` → DigitalOcean Spaces / any S3). Objects are private; reads go through the
+  auth-gated `GET /files/*key` proxy (per-record scoping is a TODO). Admin uploads
   CMS images via `POST /admin/assets` then references the returned key.
 - `NotificationsService` subscribes to `EventsService.stream()` and fans
   `stage.changed` / `application.rejected` out to per-customer rows — publishers
