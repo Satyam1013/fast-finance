@@ -13,3 +13,6 @@ uploads
 # Internal reference docs (FRS is "Not for Client Distribution").
 # Safe to commit once the repo is private — then delete this line.
 docs/*.pdf
+
+# Generated API reference — rebuild with `node scripts/gen-api-xlsx.mjs`
+docs/*.xlsx
