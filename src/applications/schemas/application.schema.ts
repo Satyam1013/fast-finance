@@ -45,6 +45,10 @@ export class Application {
   @Prop({ required: true })
   productName!: string;
 
+  /** Denormalised product card image (storage key) — for the Products tab list. */
+  @Prop()
+  productImageRef?: string;
+
   @Prop({ type: Number, enum: Stage, default: FIRST_STAGE, index: true })
   stage!: Stage;
 

@@ -15,6 +15,7 @@ import { DocumentsService } from "../documents/documents.service";
 import { MessagingService } from "../messaging/messaging.service";
 import { CustomersService } from "../customers/customers.service";
 import { StaffService } from "../staff/staff.service";
+import { StorageService } from "../storage/storage.service";
 import {
   AuditAction,
   buildStageTracker,
@@ -53,6 +54,7 @@ export class ApplicationsService {
     private readonly messaging: MessagingService,
     private readonly customers: CustomersService,
     private readonly staff: StaffService,
+    private readonly storage: StorageService,
   ) {}
 
   /** FR-CUS-08 — human-readable id, e.g. FF-PL-260712-0091. */
@@ -139,6 +141,7 @@ export class ApplicationsService {
       customerId,
       productId,
       productName: product.name,
+      productImageRef: product.imageRef,
       stage: FIRST_STAGE,
       staffId,
       profile: {
@@ -438,6 +441,7 @@ export class ApplicationsService {
       applicationId: a.applicationId,
       productId: a.productId,
       productName: a.productName,
+      productImageUrl: this.storage.urlFor(a.productImageRef) ?? null,
       stage: a.stage,
       step: a.stage,
       totalSteps: FINAL_STAGE,

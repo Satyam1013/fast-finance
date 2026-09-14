@@ -53,7 +53,12 @@ export class CustomersService {
 
   /** FR-CUS-23 — Profile screen with masked Aadhaar/PAN. */
   async getOwnProfile(user: AuthUser) {
-    const c = await this.customers.findById(user.sub).lean();
+    // aadhaar/pan are `select: false` on the schema — re-select so they can
+    // be masked below; the raw values never leave present().
+    const c = await this.customers
+      .findById(user.sub)
+      .select("+aadhaar +pan")
+      .lean();
     if (!c) throw new NotFoundException("Customer not found");
     return { success: true, profile: this.present(c) };
   }
@@ -82,22 +87,28 @@ export class CustomersService {
       this.storage.save(`customers/${user.sub}`, files.panCard!),
     ]);
 
-    const c = await this.customers.findByIdAndUpdate(
-      user.sub,
-      {
-        name: dto.fullName,
-        email: dto.email,
-        employmentCategory: dto.employmentCategory,
-        state: dto.state,
-        city: dto.city,
-        photoRef: photo.key,
-        aadhaarFrontRef: aadhaarFront.key,
-        aadhaarBackRef: aadhaarBack.key,
-        panCardRef: panCard.key,
-        profileCompletedAt: new Date(),
-      },
-      { new: true },
-    );
+    const c = await this.customers
+      .findByIdAndUpdate(
+        user.sub,
+        {
+          name: dto.fullName,
+          email: dto.email,
+          employmentCategory: dto.employmentCategory,
+          state: dto.state,
+          city: dto.city,
+          photoRef: photo.key,
+          aadhaarFrontRef: aadhaarFront.key,
+          aadhaarBackRef: aadhaarBack.key,
+          panCardRef: panCard.key,
+          aadhaar: dto.aadhaarNumber,
+          pan: dto.panNumber,
+          profileCompletedAt: new Date(),
+        },
+        { new: true },
+      )
+      // aadhaar/pan are `select: false` on the schema — re-select so present()
+      // can mask them in the response that follows the write.
+      .select("+aadhaar +pan");
     if (!c) throw new NotFoundException("Customer not found");
     return { success: true, profile: this.present(c.toObject()) };
   }
@@ -131,9 +142,9 @@ export class CustomersService {
       });
     }
 
-    const c = await this.customers.findByIdAndUpdate(user.sub, update, {
-      new: true,
-    });
+    const c = await this.customers
+      .findByIdAndUpdate(user.sub, update, { new: true })
+      .select("+aadhaar +pan");
     if (!c) throw new NotFoundException("Customer not found");
     return { success: true, profile: this.present(c.toObject()) };
   }
@@ -143,6 +154,7 @@ export class CustomersService {
     // TODO(FR-ADM-04, FR-ADM-09): paginated search across all customers.
     return this.customers
       .find()
+      .select("+aadhaar +pan")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean()

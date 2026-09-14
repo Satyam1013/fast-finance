@@ -29,6 +29,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { SupportModule } from "./support/support.module";
 import { ContentModule } from "./content/content.module";
 import { ToolsModule } from "./tools/tools.module";
+import { MastersModule } from "./masters/masters.module";
 import { GstModule } from "./gst/gst.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
@@ -69,6 +70,7 @@ import { AdminModule } from "./admin/admin.module";
     SupportModule,
     ContentModule,
     ToolsModule,
+    MastersModule,
     GstModule,
     ReportsModule,
     AdminModule,

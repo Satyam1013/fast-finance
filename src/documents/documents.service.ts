@@ -202,6 +202,42 @@ export class DocumentsService {
   }
 
   /**
+   * Remove an uploaded document (or manual bank entry), resetting the
+   * checklist item back to PENDING. Blocked once staff has verified it —
+   * a verified item is corrected via re-upload + re-review, not deletion.
+   */
+  async remove(applicationId: string, type: DocumentType) {
+    const doc = await this.documents.findOne({ applicationId, type });
+    if (!doc || doc.status === DocumentStatus.Pending) {
+      throw new NotFoundException("Document not found");
+    }
+    if (doc.status === DocumentStatus.Verified) {
+      throw new BadRequestException({
+        success: false,
+        code: "DOCUMENT_VERIFIED",
+        message: "A verified document cannot be removed.",
+      });
+    }
+    if (doc.fileRef) await this.storage.delete(doc.fileRef);
+
+    await this.documents.updateOne(
+      { _id: doc._id },
+      {
+        status: DocumentStatus.Pending,
+        $unset: {
+          fileRef: "",
+          submissionMethod: "",
+          manualBankDetails: "",
+          rejectionNote: "",
+          verifiedBy: "",
+          verifiedAt: "",
+        },
+      },
+    );
+    return { success: true };
+  }
+
+  /**
    * FR-CUS-11 — Account Aggregator OTP path. Feature-flagged
    * (FEATURE_ACCOUNT_AGGREGATOR); manual entry is the supported fallback
    * until AA registration completes (FRS §10.2, PRD sequencing note).
