@@ -10,12 +10,16 @@ import {
   DocumentEntityDocument,
 } from "./schemas/document.schema";
 import {
+  Application,
+  ApplicationDocument,
+} from "../applications/schemas/application.schema";
+import {
   BankStatementMethod,
   DOCUMENT_LABELS,
   DocumentStatus,
   DocumentType,
-  MANDATORY_DOCUMENTS,
   AuditAction,
+  requiredDocumentsFor,
 } from "../common/constants";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 import { StorageService } from "../storage/storage.service";
@@ -27,14 +31,31 @@ export class DocumentsService {
   constructor(
     @InjectModel(DocumentEntity.name)
     private readonly documents: Model<DocumentEntityDocument>,
+    // Read-only access for the per-category checklist — same model as
+    // ApplicationsModule, no module cycle (mirrors MessagingService).
+    @InjectModel(Application.name)
+    private readonly applications: Model<ApplicationDocument>,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
   ) {}
 
+  /** The per-category checklist (Figma) for an application's product + employment type. */
+  private async requiredTypesFor(
+    applicationId: string,
+  ): Promise<DocumentType[]> {
+    const app = await this.applications
+      .findById(applicationId)
+      .select("productCode profile.employmentType")
+      .lean();
+    if (!app) throw new NotFoundException("Application not found");
+    return requiredDocumentsFor(app.productCode, app.profile.employmentType);
+  }
+
   /** Seed the mandatory checklist as PENDING rows when an application is created. */
   async seedChecklist(applicationId: string): Promise<void> {
+    const requiredTypes = await this.requiredTypesFor(applicationId);
     await this.documents.bulkWrite(
-      MANDATORY_DOCUMENTS.map((type) => ({
+      requiredTypes.map((type) => ({
         updateOne: {
           filter: { applicationId, type },
           update: { $setOnInsert: { status: DocumentStatus.Pending } },
@@ -46,9 +67,10 @@ export class DocumentsService {
 
   /** FR-CUS-09 — checklist with per-item status + resolved file URL. */
   async checklistView(applicationId: string) {
+    const requiredTypes = await this.requiredTypesFor(applicationId);
     const rows = await this.documents.find({ applicationId }).lean();
     const byType = new Map(rows.map((r) => [r.type, r]));
-    return MANDATORY_DOCUMENTS.map((type) => {
+    return requiredTypes.map((type) => {
       const r = byType.get(type);
       return {
         type,
@@ -75,8 +97,9 @@ export class DocumentsService {
 
   /** Labels of the mandatory documents not yet Submitted/Verified. */
   async pendingMandatory(applicationId: string): Promise<string[]> {
+    const requiredTypes = await this.requiredTypesFor(applicationId);
     const rows = await this.documents
-      .find({ applicationId, type: { $in: MANDATORY_DOCUMENTS } })
+      .find({ applicationId, type: { $in: requiredTypes } })
       .lean();
     const ok = new Set(
       rows
@@ -87,25 +110,41 @@ export class DocumentsService {
         )
         .map((d) => d.type),
     );
-    return MANDATORY_DOCUMENTS.filter((t) => !ok.has(t)).map(
-      (t) => DOCUMENT_LABELS[t],
-    );
+    return requiredTypes
+      .filter((t) => !ok.has(t))
+      .map((t) => DOCUMENT_LABELS[t]);
   }
 
-  /** Pending-mandatory count per application id — for the FR-CUS-19 prompt. */
+  /**
+   * Pending-mandatory count per application — for the FR-CUS-19 prompt. Each
+   * application can have a different required list (per its product category).
+   */
   async pendingCountByApplication(
     applicationIds: string[],
   ): Promise<Map<string, number>> {
     if (!applicationIds.length) return new Map();
-    const rows = await this.documents
-      .find({
-        applicationId: { $in: applicationIds },
-        type: { $in: MANDATORY_DOCUMENTS },
-      })
+    const apps = await this.applications
+      .find({ _id: { $in: applicationIds } })
+      .select("productCode profile.employmentType")
       .lean();
+    const requiredByApp = new Map(
+      apps.map((a) => [
+        String(a._id),
+        requiredDocumentsFor(a.productCode, a.profile.employmentType),
+      ]),
+    );
+
+    const rows = await this.documents
+      .find({ applicationId: { $in: applicationIds } })
+      .lean();
+
     const counts = new Map<string, number>();
-    for (const id of applicationIds) counts.set(id, MANDATORY_DOCUMENTS.length);
+    for (const id of applicationIds) {
+      counts.set(id, requiredByApp.get(id)?.length ?? 0);
+    }
     for (const d of rows) {
+      const required = requiredByApp.get(d.applicationId);
+      if (!required?.includes(d.type)) continue;
       if (
         d.status === DocumentStatus.Submitted ||
         d.status === DocumentStatus.Verified

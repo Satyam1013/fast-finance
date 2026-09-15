@@ -49,6 +49,10 @@ export class Application {
   @Prop()
   productImageRef?: string;
 
+  /** Denormalised {@link Product.code} — drives the per-category document checklist. */
+  @Prop({ required: true })
+  productCode!: string;
+
   @Prop({ type: Number, enum: Stage, default: FIRST_STAGE, index: true })
   stage!: Stage;
 

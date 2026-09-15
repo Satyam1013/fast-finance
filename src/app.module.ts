@@ -23,6 +23,7 @@ import { StaffModule } from "./staff/staff.module";
 import { CatalogueModule } from "./catalogue/catalogue.module";
 import { ApplicationsModule } from "./applications/applications.module";
 import { DocumentsModule } from "./documents/documents.module";
+import { OffersModule } from "./offers/offers.module";
 import { CommissionModule } from "./commission/commission.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -64,6 +65,7 @@ import { AdminModule } from "./admin/admin.module";
     CatalogueModule,
     ApplicationsModule,
     DocumentsModule,
+    OffersModule,
     CommissionModule,
     MessagingModule,
     NotificationsModule,

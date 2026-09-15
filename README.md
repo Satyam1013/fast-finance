@@ -52,9 +52,10 @@ All three return `{ accessToken, refreshToken }`. Rotate via `POST /auth/refresh
 | `events` | SSE fan-out for "reflect without refresh" | ✅ wired |
 | `audit` | append-only trail (PRD A-13) | ✅ wired |
 | `storage` | `local` + `s3` (DO Spaces) drivers, `/files/*` proxy, `/admin/assets` | ✅ done |
-| `customers` | profile create/edit/view, masked KYC | ✅ customer path done |
+| `customers` | profile create/edit/view, masked KYC, Staff/Admin KYC review | ✅ customer path done |
 | `applications` | list, detail + tracker, start/resume, submit, advance/revert/reject | ✅ customer + core staff path |
-| `documents` | upload, checklist, manual bank, staff verify/reject | ✅ done (AA flagged off) |
+| `documents` | upload, per-category checklist (Figma), manual bank, staff verify/reject | ✅ done (AA flagged off) |
+| `offers` | Loan Offer (Stage 3) — Staff/Partner/Admin set, Customer accept/reject | ✅ done |
 | `messaging` | customer↔staff chat + system stage messages | ✅ done |
 | `notifications` | per-user centre + domain-event fan-out | ✅ done |
 | `support` | FAQs + contact block | ✅ done |

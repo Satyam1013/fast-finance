@@ -9,6 +9,7 @@ import { DocumentsModule } from "../documents/documents.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { CustomersModule } from "../customers/customers.module";
 import { StaffModule } from "../staff/staff.module";
+import { OffersModule } from "../offers/offers.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StaffModule } from "../staff/staff.module";
     MessagingModule,
     CustomersModule,
     StaffModule,
+    OffersModule,
     MongooseModule.forFeature([
       { name: Application.name, schema: ApplicationSchema },
     ]),

@@ -6,6 +6,10 @@ import {
   DocumentEntity,
   DocumentEntitySchema,
 } from "./schemas/document.schema";
+import {
+  Application,
+  ApplicationSchema,
+} from "../applications/schemas/application.schema";
 import { AuditModule } from "../audit/audit.module";
 
 @Module({
@@ -13,6 +17,9 @@ import { AuditModule } from "../audit/audit.module";
     AuditModule,
     MongooseModule.forFeature([
       { name: DocumentEntity.name, schema: DocumentEntitySchema },
+      // Read-only access for the per-category checklist — same model as
+      // ApplicationsModule, no module cycle (mirrors MessagingModule).
+      { name: Application.name, schema: ApplicationSchema },
     ]),
   ],
   providers: [DocumentsService],

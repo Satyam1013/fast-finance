@@ -16,6 +16,8 @@ import { MessagingService } from "../messaging/messaging.service";
 import { CustomersService } from "../customers/customers.service";
 import { StaffService } from "../staff/staff.service";
 import { StorageService } from "../storage/storage.service";
+import { OffersService } from "../offers/offers.service";
+import { OfferStatus } from "../offers/schemas/loan-offer.schema";
 import {
   AuditAction,
   buildStageTracker,
@@ -55,6 +57,7 @@ export class ApplicationsService {
     private readonly customers: CustomersService,
     private readonly staff: StaffService,
     private readonly storage: StorageService,
+    private readonly offers: OffersService,
   ) {}
 
   /** FR-CUS-08 — human-readable id, e.g. FF-PL-260712-0091. */
@@ -142,6 +145,7 @@ export class ApplicationsService {
       productId,
       productName: product.name,
       productImageRef: product.imageRef,
+      productCode: product.code,
       stage: FIRST_STAGE,
       staffId,
       profile: {
@@ -201,6 +205,81 @@ export class ApplicationsService {
     app.submittedAt = new Date();
     await this.applyStageChange(app, FIRST_STAGE, nextStage(FIRST_STAGE), user);
     return this.detail(app);
+  }
+
+  /**
+   * Customer accepts the pending Loan Offer — advances Stage 3 -> 4 and
+   * records the sanctioned amount onto the application (PRD §6, Stage 3).
+   */
+  async acceptOffer(applicationId: string, user: AuthUser) {
+    const app = await this.applications.findById(applicationId);
+    if (!app || app.customerId !== user.sub) {
+      throw new NotFoundException("Application not found");
+    }
+    if (app.stage !== Stage.LoanOffer) {
+      throw new BadRequestException({
+        success: false,
+        code: "NOT_AT_OFFER_STAGE",
+        message: "This application is not at the Loan Offer stage.",
+      });
+    }
+    if (app.isRejected || app.locked) {
+      throw new ForbiddenException("This application can no longer be changed");
+    }
+
+    const offer = await this.offers.findPendingOrThrow(applicationId);
+    app.loanAmount = offer.loanAmount;
+    await this.offers.markResponded(applicationId, OfferStatus.Accepted);
+    await this.audit.record({
+      action: AuditAction.OfferAccepted,
+      targetId: applicationId,
+      targetType: "Application",
+      actorId: user.sub,
+      actorRole: user.role,
+      actorName: user.name,
+    });
+    await this.applyStageChange(
+      app,
+      Stage.LoanOffer,
+      nextStage(Stage.LoanOffer),
+      user,
+    );
+    return this.detail(app);
+  }
+
+  /**
+   * Customer declines the pending Loan Offer — the application itself is
+   * rejected (declining sanctioned terms ends the journey, §3.1).
+   */
+  async rejectOffer(applicationId: string, user: AuthUser, note?: string) {
+    const app = await this.applications.findById(applicationId);
+    if (!app || app.customerId !== user.sub) {
+      throw new NotFoundException("Application not found");
+    }
+    if (app.stage !== Stage.LoanOffer) {
+      throw new BadRequestException({
+        success: false,
+        code: "NOT_AT_OFFER_STAGE",
+        message: "This application is not at the Loan Offer stage.",
+      });
+    }
+
+    await this.offers.findPendingOrThrow(applicationId);
+    await this.offers.markResponded(applicationId, OfferStatus.Rejected, note);
+    await this.audit.record({
+      action: AuditAction.OfferRejected,
+      targetId: applicationId,
+      targetType: "Application",
+      actorId: user.sub,
+      actorRole: user.role,
+      actorName: user.name,
+      reason: note,
+    });
+    return this.reject(
+      applicationId,
+      note?.trim() || "Customer declined the loan offer.",
+      user,
+    );
   }
 
   /**
@@ -466,9 +545,10 @@ export class ApplicationsService {
 
   /** Full detail payload for the Application-form screen. */
   private async detail(app: ApplicationDocument) {
-    const [documents, assignedStaff] = await Promise.all([
+    const [documents, assignedStaff, offer] = await Promise.all([
       this.documents.checklistView(app.id),
       this.staff.contactCard(app.staffId),
+      this.offers.get(app.id),
     ]);
     const pendingDocuments = documents
       .filter(
@@ -490,6 +570,7 @@ export class ApplicationsService {
         documents,
         pendingDocuments,
         assignedStaff,
+        offer,
         profile: app.profile,
         rejection: app.isRejected
           ? { reason: app.rejectionReason ?? null, at: app.rejectedAt ?? null }
