@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -67,6 +68,14 @@ export class DocumentsController {
         }
       : undefined;
     return this.documents.upload(id, dto.type, upload);
+  }
+
+  /** Remove an uploaded (not-yet-verified) document — resets it to PENDING. */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer)
+  @Delete("applications/:id/documents/:type")
+  remove(@Param("id") id: string, @Param("type") type: DocumentType) {
+    return this.documents.remove(id, type);
   }
 
   @UseGuards(RolesGuard)

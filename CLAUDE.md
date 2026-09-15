@@ -19,6 +19,14 @@ are separate deliverables built by others against this API's OpenAPI spec
   narrow the query by `scopeFor(module, role)` from `common/constants/roles.ts`
   (own / own-leads / assigned / all). A Staff token must never reach another
   staff member's customer by id (NFR-02, FRS §10.1, PRD §7).
+- **Cross-module read access without a cycle:** when a module needs read-only
+  `Application` data but importing `ApplicationsModule` would cycle back (it
+  already imports the module in question), register the `Application` schema
+  a second time via `MongooseModule.forFeature` — same collection, no import
+  of `ApplicationsModule`/`ApplicationsService`. Used by `MessagingModule`,
+  `DocumentsModule` and `OffersModule`. Anything that needs to *mutate* the
+  application's stage stays inside `ApplicationsService` itself (it injects
+  the other services, never the other way round).
 
 ## Domain rules that bite if missed (FRS §10.1, PRD §6.1)
 
@@ -32,7 +40,9 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Duplicate prevention: before creating a Customer application, reuse any
   existing one for same customer+product at stage 1, not rejected.
 - Submission gate (FR-CUS-13): block in the API, not just UI, until every
-  `MANDATORY_DOCUMENTS` entry is Submitted/Verified.
+  document `requiredDocumentsFor(productCode, employmentType)` names is
+  Submitted/Verified — the checklist is **per product category**, not one
+  global list (see "Category-specific documents" below).
 - Commission: computed once when stage hits 7 (not rejected), persisted with a
   snapshot of `commissionType`/`commissionValue`. Never recompute historically.
 - Partner code auth: active partners only.
@@ -64,6 +74,39 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Home extras: `POST /tools/emi` (pure), `content` module (banners / gallery /
   lenders + `content/lenders/search?pincode=`), `support` module (FAQs + contact
   from `SUPPORT_*` env).
+
+### Category-specific documents (Figma checklists)
+
+`common/constants/documents.ts` maps `Product.code` (+ `employmentType` for
+Personal Loan) to a fixed `DocumentType[]` — `requiredDocumentsFor()`. Lists
+are transcribed from the Figma "required documents" info panels (PL/BL, HL/
+MLAP, CL, INS); unmapped product codes fall back to a generic list — extend
+the `switch` before adding a new product code. `DocumentsService` resolves the
+list itself per application (reads `Application.productCode` +
+`profile.employmentType`, both denormalised at creation) — callers just pass
+an `applicationId`, never the list.
+
+### Loan Offer (Stage 3)
+
+`offers/` — Staff (own assigned) / Partner (own referrals) / Admin set the
+offer via `POST /applications/:id/offer` (amount, rate, tenure → EMI computed
+with `tools/emi.ts`); locked once the customer accepts. Customer responds via
+`POST /applications/:id/offer/accept` (advances 3→4, sets
+`Application.loanAmount`) or `.../offer/reject` (rejects the whole
+application — declining terms ends the journey, §3.1). Both live on
+`ApplicationsController`/`ApplicationsService` since they drive the stage
+transition; `OffersService` only owns the offer record + the Staff/Partner
+scoping check for *setting* it.
+
+### Customer KYC review
+
+Manual only (no third-party verification API) — `Customer.kycStatus`
+(PENDING/VERIFIED/REJECTED, mirrors `Partner.kycStatus`) reviewed by
+Staff/Admin via `POST /admin/customers/:id/kyc-review`, same
+`{decision:'verify'|'reject', note?}` shape as `documents.review`. Aadhaar/PAN
+numbers are set once at Create Profile and are not editable via `PATCH
+/me/profile` — a rejected customer currently has no self-service resubmit
+path (follow-up, not built).
 
 ### Still needs the business (mock is ahead of the FRS here)
 

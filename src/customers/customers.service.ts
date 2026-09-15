@@ -9,9 +9,14 @@ import type { Types } from "mongoose";
 import { Customer, CustomerDocument } from "./schemas/customer.schema";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 import { StorageService } from "../storage/storage.service";
-import { EMPLOYMENT_CATEGORY_LABELS } from "../common/constants";
+import {
+  AuditAction,
+  EMPLOYMENT_CATEGORY_LABELS,
+  VerificationStatus,
+} from "../common/constants";
 import { maskAadhaar, maskPan } from "../common/util/mask";
 import { toIdString } from "../common/util/id";
+import { AuditService } from "../audit/audit.service";
 import { CreateProfileDto } from "./dto/create-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 
@@ -39,6 +44,7 @@ export class CustomersService {
     @InjectModel(Customer.name)
     private readonly customers: Model<CustomerDocument>,
     private readonly storage: StorageService,
+    private readonly audit: AuditService,
   ) {}
 
   findById(id: string) {
@@ -53,7 +59,12 @@ export class CustomersService {
 
   /** FR-CUS-23 — Profile screen with masked Aadhaar/PAN. */
   async getOwnProfile(user: AuthUser) {
-    const c = await this.customers.findById(user.sub).lean();
+    // aadhaar/pan are `select: false` on the schema — re-select so they can
+    // be masked below; the raw values never leave present().
+    const c = await this.customers
+      .findById(user.sub)
+      .select("+aadhaar +pan")
+      .lean();
     if (!c) throw new NotFoundException("Customer not found");
     return { success: true, profile: this.present(c) };
   }
@@ -82,22 +93,28 @@ export class CustomersService {
       this.storage.save(`customers/${user.sub}`, files.panCard!),
     ]);
 
-    const c = await this.customers.findByIdAndUpdate(
-      user.sub,
-      {
-        name: dto.fullName,
-        email: dto.email,
-        employmentCategory: dto.employmentCategory,
-        state: dto.state,
-        city: dto.city,
-        photoRef: photo.key,
-        aadhaarFrontRef: aadhaarFront.key,
-        aadhaarBackRef: aadhaarBack.key,
-        panCardRef: panCard.key,
-        profileCompletedAt: new Date(),
-      },
-      { new: true },
-    );
+    const c = await this.customers
+      .findByIdAndUpdate(
+        user.sub,
+        {
+          name: dto.fullName,
+          email: dto.email,
+          employmentCategory: dto.employmentCategory,
+          state: dto.state,
+          city: dto.city,
+          photoRef: photo.key,
+          aadhaarFrontRef: aadhaarFront.key,
+          aadhaarBackRef: aadhaarBack.key,
+          panCardRef: panCard.key,
+          aadhaar: dto.aadhaarNumber,
+          pan: dto.panNumber,
+          profileCompletedAt: new Date(),
+        },
+        { new: true },
+      )
+      // aadhaar/pan are `select: false` on the schema — re-select so present()
+      // can mask them in the response that follows the write.
+      .select("+aadhaar +pan");
     if (!c) throw new NotFoundException("Customer not found");
     return { success: true, profile: this.present(c.toObject()) };
   }
@@ -131,10 +148,61 @@ export class CustomersService {
       });
     }
 
-    const c = await this.customers.findByIdAndUpdate(user.sub, update, {
-      new: true,
-    });
+    const c = await this.customers
+      .findByIdAndUpdate(user.sub, update, { new: true })
+      .select("+aadhaar +pan");
     if (!c) throw new NotFoundException("Customer not found");
+    return { success: true, profile: this.present(c.toObject()) };
+  }
+
+  /**
+   * FR-STF-08-style manual KYC review — Staff/Admin verify or reject the
+   * Aadhaar/PAN captured at Create Profile. No third-party verification API;
+   * this is the "normal" admin-side check against the uploaded scans.
+   */
+  async reviewKyc(
+    customerId: string,
+    decision: "verify" | "reject",
+    note: string | undefined,
+    reviewer: AuthUser,
+  ) {
+    if (decision === "reject" && !note?.trim()) {
+      throw new BadRequestException({
+        success: false,
+        code: "NOTE_REQUIRED",
+        message: "A note is required when rejecting KYC.",
+      });
+    }
+
+    const update: Record<string, unknown> = {
+      kycStatus:
+        decision === "verify"
+          ? VerificationStatus.Verified
+          : VerificationStatus.Rejected,
+      kycReviewedBy: reviewer.sub,
+      kycReviewedAt: new Date(),
+    };
+    if (decision === "reject") update.kycRejectionNote = note?.trim();
+    else update.$unset = { kycRejectionNote: "" };
+
+    const c = await this.customers
+      .findByIdAndUpdate(customerId, update, { new: true })
+      .select("+aadhaar +pan");
+    if (!c) throw new NotFoundException("Customer not found");
+
+    await this.audit.record({
+      action:
+        decision === "verify"
+          ? AuditAction.CustomerKycVerified
+          : AuditAction.CustomerKycRejected,
+      targetId: customerId,
+      targetType: "Customer",
+      actorId: reviewer.sub,
+      actorRole: reviewer.role,
+      actorName: reviewer.name,
+      reason: c.kycRejectionNote,
+    });
+
     return { success: true, profile: this.present(c.toObject()) };
   }
 
@@ -143,6 +211,7 @@ export class CustomersService {
     // TODO(FR-ADM-04, FR-ADM-09): paginated search across all customers.
     return this.customers
       .find()
+      .select("+aadhaar +pan")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean()
@@ -173,6 +242,9 @@ export class CustomersService {
         aadhaarFrontUrl: this.storage.urlFor(c.aadhaarFrontRef) ?? null,
         aadhaarBackUrl: this.storage.urlFor(c.aadhaarBackRef) ?? null,
         panCardUrl: this.storage.urlFor(c.panCardRef) ?? null,
+        status: c.kycStatus ?? VerificationStatus.Pending,
+        rejectionNote: c.kycRejectionNote ?? null,
+        reviewedAt: c.kycReviewedAt ?? null,
       },
       profileComplete: Boolean(c.profileCompletedAt),
       createdAt: c.createdAt ?? null,

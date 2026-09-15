@@ -45,6 +45,14 @@ export class Application {
   @Prop({ required: true })
   productName!: string;
 
+  /** Denormalised product card image (storage key) — for the Products tab list. */
+  @Prop()
+  productImageRef?: string;
+
+  /** Denormalised {@link Product.code} — drives the per-category document checklist. */
+  @Prop({ required: true })
+  productCode!: string;
+
   @Prop({ type: Number, enum: Stage, default: FIRST_STAGE, index: true })
   stage!: Stage;
 

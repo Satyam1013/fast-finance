@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { IsMongoId, IsString, MinLength } from "class-validator";
+import { IsMongoId, IsOptional, IsString, MinLength } from "class-validator";
 import { ApplicationsService } from "./applications.service";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -13,6 +13,9 @@ class StartApplicationDto {
 }
 class RejectDto {
   @IsString() @MinLength(3) reason!: string;
+}
+class RejectOfferDto {
+  @IsOptional() @IsString() note?: string;
 }
 
 @ApiTags("applications")
@@ -50,6 +53,26 @@ export class ApplicationsController {
   @Post(":id/submit")
   submit(@Param("id") id: string, @CurrentUser() user: AuthUser) {
     return this.applications.submit(id, user);
+  }
+
+  /** Customer accepts the pending Loan Offer — advances Stage 3 -> 4. */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer)
+  @Post(":id/offer/accept")
+  acceptOffer(@Param("id") id: string, @CurrentUser() user: AuthUser) {
+    return this.applications.acceptOffer(id, user);
+  }
+
+  /** Customer declines the pending Loan Offer — rejects the application. */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer)
+  @Post(":id/offer/reject")
+  rejectOffer(
+    @Param("id") id: string,
+    @Body() dto: RejectOfferDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.applications.rejectOffer(id, user, dto.note);
   }
 
   /** FR-STF-09 — advance one stage (assigned staff or admin). */

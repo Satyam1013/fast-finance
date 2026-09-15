@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Patch,
   Post,
   UploadedFiles,
@@ -10,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
+import { IsIn, IsOptional, IsString } from "class-validator";
 import { CustomersService } from "./customers.service";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -19,6 +21,11 @@ import { Role } from "../common/constants";
 import { CreateProfileDto } from "./dto/create-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { pickFile, uploadOptions } from "../common/util/upload";
+
+class ReviewKycDto {
+  @IsIn(["verify", "reject"]) decision!: "verify" | "reject";
+  @IsOptional() @IsString() note?: string;
+}
 
 const PROFILE_FILE_FIELDS = [
   { name: "photo", maxCount: 1 },
@@ -82,5 +89,17 @@ export class CustomersController {
   @Get("admin/customers")
   adminList() {
     return this.customers.adminList({});
+  }
+
+  /** Manual KYC verify/reject against the Create-Profile Aadhaar/PAN scans. */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Staff, Role.Admin)
+  @Post("admin/customers/:id/kyc-review")
+  reviewKyc(
+    @Param("id") id: string,
+    @Body() dto: ReviewKycDto,
+    @CurrentUser() reviewer: AuthUser,
+  ) {
+    return this.customers.reviewKyc(id, dto.decision, dto.note, reviewer);
   }
 }

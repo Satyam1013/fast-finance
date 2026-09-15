@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { EmploymentCategory } from "../../common/constants";
+import { EmploymentCategory, VerificationStatus } from "../../common/constants";
 
 export type CustomerDocument = HydratedDocument<Customer> & {
   createdAt: Date;
@@ -72,6 +72,28 @@ export class Customer {
   /** Set once the mandatory Create-Profile fields are all present. */
   @Prop()
   profileCompletedAt?: Date;
+
+  /**
+   * Manual KYC review by Staff/Admin against the Aadhaar/PAN scans + number
+   * captured at Create Profile — no third-party verification API (kept as
+   * "normal" admin-side review, same pattern as document verify/reject).
+   */
+  @Prop({
+    type: String,
+    enum: VerificationStatus,
+    default: VerificationStatus.Pending,
+  })
+  kycStatus!: VerificationStatus;
+
+  /** Shown to the customer when kycStatus === REJECTED. */
+  @Prop()
+  kycRejectionNote?: string;
+
+  @Prop()
+  kycReviewedBy?: string;
+
+  @Prop()
+  kycReviewedAt?: Date;
 
   /**
    * Set when this same person is also a partner (DSA who takes a personal
