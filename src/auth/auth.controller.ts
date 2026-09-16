@@ -17,9 +17,11 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   // ── Customer ──
+  // "otp/send" is a compatibility alias for the frontend's original path —
+  // "otp/request" is the documented one (see the Excel / OpenAPI docs).
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post("otp/request")
+  @Post(["otp/request", "otp/send"])
   @HttpCode(200)
   requestOtp(@Body() dto: RequestOtpDto) {
     return this.auth.requestOtp(dto.mobile);
@@ -52,8 +54,9 @@ export class AuthController {
   }
 
   // ── Shared ──
+  // "refresh-token" is a compatibility alias — "refresh" is the documented path.
   @Public()
-  @Post("refresh")
+  @Post(["refresh", "refresh-token"])
   @HttpCode(200)
   refresh(@Body() dto: RefreshDto) {
     return this.auth.refresh(dto.refreshToken);

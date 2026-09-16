@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -40,10 +41,14 @@ const PROFILE_FILE_FIELDS = [
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}
 
+  // "user/profile" is a compatibility alias for the frontend's original path —
+  // "me/profile" is the documented one (mobile is the login identity, not
+  // editable here — PRD §2.2 — same on both paths).
+
   /** Customer's own profile — FR-CUS-23. */
   @UseGuards(RolesGuard)
   @Roles(Role.Customer)
-  @Get("me/profile")
+  @Get(["me/profile", "user/profile"])
   myProfile(@CurrentUser() user: AuthUser) {
     return this.customers.getOwnProfile(user);
   }
@@ -51,7 +56,7 @@ export class CustomersController {
   /** Create Profile screen — FR-CUS-07. Multipart: fields + 4 mandatory files. */
   @UseGuards(RolesGuard)
   @Roles(Role.Customer)
-  @Post("me/profile")
+  @Post(["me/profile", "user/profile"])
   @ApiConsumes("multipart/form-data")
   @UseInterceptors(FileFieldsInterceptor(PROFILE_FILE_FIELDS, uploadOptions))
   createProfile(
@@ -70,7 +75,7 @@ export class CustomersController {
   /** Edit Profile screen — partial update, optional replacement photo. */
   @UseGuards(RolesGuard)
   @Roles(Role.Customer)
-  @Patch("me/profile")
+  @Patch(["me/profile", "user/profile"])
   @ApiConsumes("multipart/form-data", "application/json")
   @UseInterceptors(FileFieldsInterceptor(PROFILE_FILE_FIELDS, uploadOptions))
   updateProfile(
@@ -81,6 +86,24 @@ export class CustomersController {
     return this.customers.updateOwnProfile(user, dto, {
       photo: pickFile(files, "photo"),
     });
+  }
+
+  /**
+   * Same as PATCH above — a distinct handler because a NestJS method can only
+   * carry one @Patch/@Put mapping (the second would silently overwrite the
+   * first's route metadata). Alias for the frontend's original "PUT" path.
+   */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer)
+  @Put("user/profile")
+  @ApiConsumes("multipart/form-data", "application/json")
+  @UseInterceptors(FileFieldsInterceptor(PROFILE_FILE_FIELDS, uploadOptions))
+  updateProfilePut(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateProfileDto,
+    @UploadedFiles() files: Record<string, Express.Multer.File[]>,
+  ) {
+    return this.updateProfile(user, dto, files);
   }
 
   /** Admin register — FR-ADM-04. Staff assigned list lives in staff module. */
