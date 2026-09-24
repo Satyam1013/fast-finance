@@ -31,8 +31,6 @@ export const envValidationSchema = Joi.object({
   MACROPAGE_CONNECT_BASE_URL: Joi.string().allow("").default(""),
   MACROPAGE_CONNECT_API_KEY: Joi.string().allow("").default(""),
   MACROPAGE_CONNECT_OTP_TEMPLATE: Joi.string().allow("").default(""),
-  MACROPAGE_CONNECT_SENDER: Joi.string().allow("").default(""),
-  MACROPAGE_CONNECT_TEMPLATE_LANG: Joi.string().default("en"),
   MACROPAGE_CONNECT_COUNTRY_CODE: Joi.string().default("91"),
 
   PARTNER_CODE_PREFIX: Joi.string().default("FFP"),
