@@ -1,4 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
@@ -21,7 +26,7 @@ import {
 } from "./schemas/refresh-token.schema";
 import { OtpRequest, OtpRequestDocument } from "./schemas/otp-request.schema";
 import { NotificationsService } from "../notifications/notifications.service";
-import { CommsService } from "../comms/comms.service";
+import { CommsService, OtpDeliveryError } from "../comms/comms.service";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
@@ -64,7 +69,7 @@ export class AuthService {
       ? this.config.get<string>("OTP_DEV_CODE", "0000")
       : String(randomInt(0, 10 ** length)).padStart(length, "0");
 
-    await this.otpRequests.create({
+    const otp = await this.otpRequests.create({
       mobile,
       codeHash: sha256(code),
       expiresAt: new Date(Date.now() + ttl * 1000),
@@ -77,8 +82,23 @@ export class AuthService {
     }
 
     // Real delivery — WhatsApp via MacroPage Connect (OTP_CHANNEL).
-    const result = await this.comms.sendOtp(mobile, code);
-    return { success: true, devCode: result.devCode };
+    try {
+      const result = await this.comms.sendOtp(mobile, code);
+      return { success: true, devCode: result.devCode };
+    } catch (err) {
+      // The code never reached the user — don't leave it live, and surface a
+      // clean 503 (comms already logged the provider detail).
+      await this.otpRequests.updateOne({ _id: otp._id }, { consumed: true });
+      if (!(err instanceof OtpDeliveryError)) {
+        this.logger.error(`OTP delivery crashed: ${(err as Error).message}`);
+      }
+      throw new ServiceUnavailableException({
+        success: false,
+        code: "OTP_DELIVERY_FAILED",
+        message:
+          "We couldn't send the OTP on WhatsApp right now. Please try again in a minute.",
+      });
+    }
   }
 
   async verifyOtp(mobile: string, code: string): Promise<AuthResult> {

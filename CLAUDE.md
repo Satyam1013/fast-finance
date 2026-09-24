@@ -10,7 +10,7 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Global prefix `api/v1`. Error shape: `{ success:false, message, code, errors? }`
   via `HttpExceptionFilter` — services throw structured objects for custom codes.
 - One feature module per domain: `<name>/<name>.{module,service,controller}.ts`
-  + `schemas/` + `dto/`.
+  - `schemas/` + `dto/`.
 - Mongoose schemas: `@Schema({ timestamps: true, collection: "<plural>" })`,
   `export type XDocument = HydratedDocument<X> & { createdAt: Date; updatedAt: Date }`.
 - `JwtAuthGuard` is global; opt out with `@Public()`. `RolesGuard` +
@@ -24,7 +24,7 @@ are separate deliverables built by others against this API's OpenAPI spec
   already imports the module in question), register the `Application` schema
   a second time via `MongooseModule.forFeature` — same collection, no import
   of `ApplicationsModule`/`ApplicationsService`. Used by `MessagingModule`,
-  `DocumentsModule` and `OffersModule`. Anything that needs to *mutate* the
+  `DocumentsModule` and `OffersModule`. Anything that needs to _mutate_ the
   application's stage stays inside `ApplicationsService` itself (it injects
   the other services, never the other way round).
 
@@ -54,8 +54,12 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Login OTP is **4 digits** (`OTP_LENGTH`, mock has 4 boxes). No guest mode.
   Delivery is WhatsApp-only via `CommsService` (`OTP_CHANNEL=whatsapp` →
   MacroPage Connect, the in-house platform). `OTP_DEV_MODE=true` skips sending
-  and echoes `OTP_DEV_CODE`. No SMS path. The MacroPage Connect request contract
-  in `comms.service.ts` is a Meta-Cloud-API-shaped guess — confirm + adjust.
+  and echoes `OTP_DEV_CODE`. No SMS path. MacroPage Connect contract (probed):
+  `POST /api/v1/public/messages/send`, `x-api-key` header, body `{phone:"+91…",
+templateName, variables:[code]}` — the `variables` field name is still a
+  guess (unknown fields are stripped server-side); confirm with one live send.
+  The template must be APPROVED by Meta first. A failed send marks the OTP
+  consumed and returns 503 `OTP_DELIVERY_FAILED`.
 - Application ID format is `FF-<PRODUCT_CODE>-<YYMMDD>-<NNNN>` (matches the mock),
   generated in `ApplicationsService`. `Product.code` is required + unique.
 - Create Profile (`POST /me/profile`, multipart) captures name/email/employment/
@@ -96,7 +100,7 @@ with `tools/emi.ts`); locked once the customer accepts. Customer responds via
 application — declining terms ends the journey, §3.1). Both live on
 `ApplicationsController`/`ApplicationsService` since they drive the stage
 transition; `OffersService` only owns the offer record + the Staff/Partner
-scoping check for *setting* it.
+scoping check for _setting_ it.
 
 ### Customer KYC review
 

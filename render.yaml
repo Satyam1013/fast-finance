@@ -48,9 +48,10 @@ services:
         sync: false
 
       # ── OTP ──
-      # Keep dev mode on until MacroPage Connect creds are set, then flip
-      # OTP_DEV_MODE=false (OTP_CHANNEL is already whatsapp) and add the
-      # MACROPAGE_CONNECT_* vars in the dashboard.
+      # OTP_DEV_MODE=true never sends anything (fixed code 0000). For real
+      # WhatsApp OTPs set OTP_DEV_MODE=false in the dashboard and fill the
+      # MACROPAGE_CONNECT_* vars (OTP_CHANNEL is already whatsapp). The
+      # template must be APPROVED in MacroPage first.
       - key: OTP_DEV_MODE
         value: "true"
       - key: OTP_DEV_CODE
@@ -66,8 +67,6 @@ services:
       - key: MACROPAGE_CONNECT_API_KEY
         sync: false
       - key: MACROPAGE_CONNECT_OTP_TEMPLATE
-        sync: false
-      - key: MACROPAGE_CONNECT_SENDER
         sync: false
 
       # ── File storage ──
