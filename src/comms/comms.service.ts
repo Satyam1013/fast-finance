@@ -57,10 +57,10 @@ export class CommsService {
    * (E.164 with a leading `+`) and `templateName`. The template must be
    * APPROVED in MacroPage → Templates and take exactly one body variable.
    *
-   * TODO(macropage): the field carrying the template variable is unconfirmed —
-   * `variables: [code]` is a guess (unknown body fields are silently stripped
-   * server-side, so a wrong name arrives as an empty variable). Confirm with
-   * one live send to a real handset and adjust {@link buildPayload}.
+   * Template variables go in `templateVars`, an object keyed by placeholder
+   * position (`{ "1": code }` for `{{1}}`) — same shape the macropage website
+   * and quiz backends use. Unknown body fields are silently stripped
+   * server-side, so a wrong field name would arrive as an empty variable.
    */
   private async sendWhatsAppOtp(mobile: string, code: string): Promise<string> {
     const baseUrl = this.required("MACROPAGE_CONNECT_BASE_URL");
@@ -119,7 +119,7 @@ export class CommsService {
   }
 
   private buildPayload(phone: string, templateName: string, code: string) {
-    return { phone, templateName, variables: [code] };
+    return { phone, templateName, templateVars: { "1": code } };
   }
 
   /** 10-digit Indian mobile -> `+919876543210` (leading `+` is mandatory). */
