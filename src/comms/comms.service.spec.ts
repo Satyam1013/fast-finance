@@ -41,7 +41,7 @@ describe("CommsService (whatsapp)", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       phone: "+919876543210",
       templateName: "fast_finance_otp",
-      variables: ["4821"],
+      templateVars: { "1": "4821" },
     });
     expect(result).toMatchObject({ channel: "whatsapp", messageId: "m1" });
   });

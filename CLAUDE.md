@@ -54,11 +54,11 @@ are separate deliverables built by others against this API's OpenAPI spec
 - Login OTP is **4 digits** (`OTP_LENGTH`, mock has 4 boxes). No guest mode.
   Delivery is WhatsApp-only via `CommsService` (`OTP_CHANNEL=whatsapp` →
   MacroPage Connect, the in-house platform). `OTP_DEV_MODE=true` skips sending
-  and echoes `OTP_DEV_CODE`. No SMS path. MacroPage Connect contract (probed):
-  `POST /api/v1/public/messages/send`, `x-api-key` header, body `{phone:"+91…",
-templateName, variables:[code]}` — the `variables` field name is still a
-  guess (unknown fields are stripped server-side); confirm with one live send.
-  The template must be APPROVED by Meta first. A failed send marks the OTP
+  and echoes `OTP_DEV_CODE`. No SMS path. MacroPage Connect contract (same one the
+  macropage website/quiz backends use): `POST /api/v1/public/messages/send`,
+  `x-api-key` header, body `{phone:"+91…", templateName, templateVars:{"1":code}}`.
+  The template must be APPROVED + synced in the MacroPage workspace that owns the
+  API key (`TEMPLATE_NOT_APPROVED` otherwise). A failed send marks the OTP
   consumed and returns 503 `OTP_DELIVERY_FAILED`.
 - Application ID format is `FF-<PRODUCT_CODE>-<YYMMDD>-<NNNN>` (matches the mock),
   generated in `ApplicationsService`. `Product.code` is required + unique.
