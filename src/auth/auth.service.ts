@@ -84,7 +84,14 @@ export class AuthService {
     // Real delivery — WhatsApp via MacroPage Connect (OTP_CHANNEL).
     try {
       const result = await this.comms.sendOtp(mobile, code);
-      return { success: true, devCode: result.devCode };
+      if (!result.delivered) {
+        // OTP_DEV_MODE=false but OTP_CHANNEL isn't a real channel (its default
+        // is "dev"): nothing was sent, so never echo the code back.
+        const msg = `OTP_DEV_MODE=false but OTP_CHANNEL="${result.channel}" delivers nothing — set OTP_CHANNEL=whatsapp`;
+        this.logger.error(msg);
+        throw new OtpDeliveryError(msg);
+      }
+      return { success: true };
     } catch (err) {
       // The code never reached the user — don't leave it live, and surface a
       // clean 503 (comms already logged the provider detail).
