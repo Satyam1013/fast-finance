@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { Role, StaffRole } from "../../common/constants";
+import { Role, StaffDesignation, StaffRole } from "../../common/constants";
 
 export type StaffDocument = HydratedDocument<Staff> & {
   createdAt: Date;
@@ -39,6 +39,18 @@ export class Staff {
   @Prop({ type: String, enum: StaffRole })
   staffRole?: StaffRole;
 
+  /** Admin-panel display rank — independent of {@link staffRole}. */
+  @Prop({ type: String, enum: StaffDesignation })
+  designation?: StaffDesignation;
+
+  @Prop()
+  joinedAt?: Date;
+
+  /**
+   * Blocked staff lose access immediately — `AuthService.resolveSubject` and
+   * `staffLogin` both filter on this flag (the admin panel's "blocked" toggle
+   * is `active: false`, not a separate field).
+   */
   @Prop({ default: true })
   active!: boolean;
 

@@ -14,6 +14,8 @@ export enum CommissionType {
 export enum ProductKind {
   Loan = "LOAN",
   Insurance = "INSURANCE",
+  Investment = "INVESTMENT",
+  CreditCard = "CREDIT_CARD",
 }
 
 /**

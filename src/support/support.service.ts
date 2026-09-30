@@ -3,12 +3,21 @@ import { InjectModel } from "@nestjs/mongoose";
 import { ConfigService } from "@nestjs/config";
 import { Model } from "mongoose";
 import { Faq, FaqDocument } from "./schemas/faq.schema";
+import {
+  SupportTicket,
+  SupportTicketDocument,
+} from "./schemas/support-ticket.schema";
 import { CreateFaqDto, UpdateFaqDto } from "./dto/faq.dto";
+import { Role } from "../common/constants";
+import { toIdString } from "../common/util/id";
+import type { AuthUser } from "../common/interfaces/authenticated-request";
 
 @Injectable()
 export class SupportService {
   constructor(
     @InjectModel(Faq.name) private readonly faqs: Model<FaqDocument>,
+    @InjectModel(SupportTicket.name)
+    private readonly tickets: Model<SupportTicketDocument>,
     private readonly config: ConfigService,
   ) {}
 
@@ -65,6 +74,49 @@ export class SupportService {
   async remove(id: string) {
     const res = await this.faqs.deleteOne({ _id: id });
     if (!res.deletedCount) throw new NotFoundException("FAQ not found");
+    return { success: true };
+  }
+
+  // ── Support tickets — admin panel Support tab ──
+
+  async createTicket(actor: AuthUser, issue: string) {
+    // Route is guarded to Customer/Partner only — narrow past AuthUser's
+    // wider `role: Role` for the schema's enum.
+    const role = actor.role as Role.Customer | Role.Partner;
+    const ticket = await this.tickets.create({
+      raisedBy: actor.sub,
+      role,
+      name: actor.name ?? "",
+      issue,
+    });
+    return { success: true, id: ticket.id };
+  }
+
+  async adminListTickets(resolved?: string) {
+    const q: Record<string, unknown> = {};
+    if (resolved !== undefined) q.resolved = resolved === "true";
+    const rows = await this.tickets.find(q).sort({ createdAt: -1 }).lean();
+    return {
+      results: rows.map((t) => ({
+        id: toIdString(t._id),
+        createdAt: t.createdAt,
+        name: t.name,
+        role: t.role,
+        issue: t.issue,
+        resolved: t.resolved,
+      })),
+    };
+  }
+
+  async resolveTicket(id: string, resolved: boolean, actor: AuthUser) {
+    const t = await this.tickets.findByIdAndUpdate(
+      id,
+      resolved
+        ? { resolved: true, resolvedAt: new Date(), resolvedBy: actor.sub }
+        : { resolved: false, $unset: { resolvedAt: "", resolvedBy: "" } },
+      { new: true },
+    );
+    if (!t) throw new NotFoundException("Support ticket not found");
     return { success: true };
   }
 }

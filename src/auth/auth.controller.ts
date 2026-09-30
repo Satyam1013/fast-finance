@@ -10,6 +10,10 @@ import { VerifyOtpDto } from "./dto/verify-otp.dto";
 import { PartnerLoginDto } from "./dto/partner-login.dto";
 import { StaffLoginDto } from "./dto/staff-login.dto";
 import { LogoutDto, RefreshDto } from "./dto/refresh.dto";
+import {
+  ConfirmPasswordResetDto,
+  RequestPasswordResetDto,
+} from "./dto/reset-password.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -45,12 +49,31 @@ export class AuthController {
   }
 
   // ── Staff / Admin ──
+  // "login" is a compatibility alias for the admin panel's originally-expected
+  // path — "staff/login" is the documented one; same body, same response.
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  @Post("staff/login")
+  @Post(["staff/login", "login"])
   @HttpCode(200)
   staffLogin(@Body() dto: StaffLoginDto) {
     return this.auth.staffLogin(dto.email, dto.password);
+  }
+
+  /** Admin panel "forgot password" — no user enumeration either way. */
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post("reset-password")
+  @HttpCode(200)
+  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.auth.requestPasswordReset(dto.email);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("reset-password/confirm")
+  @HttpCode(200)
+  confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
+    return this.auth.confirmPasswordReset(dto.token, dto.password);
   }
 
   // ── Shared ──

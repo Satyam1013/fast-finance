@@ -11,6 +11,10 @@ import {
   RefreshTokenSchema,
 } from "./schemas/refresh-token.schema";
 import { OtpRequest, OtpRequestSchema } from "./schemas/otp-request.schema";
+import {
+  PasswordResetToken,
+  PasswordResetTokenSchema,
+} from "./schemas/password-reset-token.schema";
 import { Customer, CustomerSchema } from "../customers/schemas/customer.schema";
 import { Partner, PartnerSchema } from "../partners/schemas/partner.schema";
 import { Staff, StaffSchema } from "../staff/schemas/staff.schema";
@@ -24,6 +28,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     MongooseModule.forFeature([
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: OtpRequest.name, schema: OtpRequestSchema },
+      { name: PasswordResetToken.name, schema: PasswordResetTokenSchema },
       { name: Customer.name, schema: CustomerSchema },
       { name: Partner.name, schema: PartnerSchema },
       { name: Staff.name, schema: StaffSchema },

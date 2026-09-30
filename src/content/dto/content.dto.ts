@@ -38,6 +38,12 @@ export class CreateBannerDto {
   @IsString()
   ctaUrl?: string;
 
+  /** Alias for `ctaUrl` — the admin panel's expected field name. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  redirect?: string;
+
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
   @IsInt()
@@ -47,6 +53,18 @@ export class CreateBannerDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+}
+
+export class SetBannerStatusDto {
+  @ApiPropertyOptional({ description: "Native field name." })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @ApiPropertyOptional({ description: "Admin panel's expected field name." })
+  @IsOptional()
+  @IsBoolean()
+  status?: boolean;
 }
 
 export class CreateGalleryItemDto {

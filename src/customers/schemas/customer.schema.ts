@@ -37,6 +37,9 @@ export class Customer {
   employmentCategory?: EmploymentCategory;
 
   @Prop({ trim: true })
+  address?: string;
+
+  @Prop({ trim: true })
   state?: string;
 
   @Prop({ trim: true })
@@ -101,6 +104,18 @@ export class Customer {
    */
   @Prop({ index: true })
   linkedPartnerId?: string;
+
+  /**
+   * Admin panel moderation — a blocked customer loses access immediately:
+   * `AuthService.resolveSubject` re-checks this on every request, and OTP
+   * request/verify refuse a blocked mobile before a code is even sent.
+   */
+  @Prop({ default: false, index: true })
+  blocked!: boolean;
+
+  /** Free-text admin note shown on the Customer detail screen. */
+  @Prop({ trim: true })
+  note?: string;
 }
 
 export const CustomerSchema = SchemaFactory.createForClass(Customer);

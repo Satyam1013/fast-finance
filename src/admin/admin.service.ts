@@ -1,10 +1,15 @@
-import { Injectable, NotImplementedException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import {
   Application,
   ApplicationDocument,
 } from "../applications/schemas/application.schema";
+import { ApplicationsService } from "../applications/applications.service";
+import { CustomersService } from "../customers/customers.service";
+import { StaffService } from "../staff/staff.service";
+import { PartnersService } from "../partners/partners.service";
+import { Banner, BannerDocument } from "../content/schemas/banner.schema";
 import { FINAL_STAGE, FIRST_STAGE } from "../common/constants";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 
@@ -18,6 +23,14 @@ export class AdminService {
   constructor(
     @InjectModel(Application.name)
     private readonly applications: Model<ApplicationDocument>,
+    // Read-only — used only for the dashboard's appBanners count; a full
+    // ContentModule import isn't needed for one countDocuments() call.
+    @InjectModel(Banner.name)
+    private readonly banners: Model<BannerDocument>,
+    private readonly applicationsService: ApplicationsService,
+    private readonly customers: CustomersService,
+    private readonly staff: StaffService,
+    private readonly partners: PartnersService,
   ) {}
 
   /**
@@ -43,15 +56,32 @@ export class AdminService {
     return { success: true, applicationsInProgress: inProgress, pipeline };
   }
 
+  /** GET /dashboard/stats — admin panel home tile counts. */
+  async stats() {
+    const [customersCount, dsaCounts, staffsCount, appBanners] =
+      await Promise.all([
+        this.customers.countAll(),
+        this.partners.counts(),
+        this.staff.adminList({ limit: 1 }).then((r) => r.total),
+        this.banners.countDocuments({ active: true }),
+      ]);
+    return {
+      customers: customersCount,
+      dsas: dsaCounts.all,
+      staffs: staffsCount,
+      appBanners,
+    };
+  }
+
   /**
    * FR-ADM-07 / TC-SYNC-02 — reassign an application between staff members.
-   * Single transaction: update staffId, audit with actor, notify both staff.
+   * Mutation lives in ApplicationsService (CLAUDE.md); this is a thin pass-through.
    */
-  reassign(
-    _applicationId: string,
-    _toStaffId: string,
-    _actor: AuthUser,
-  ): Promise<never> {
-    throw new NotImplementedException("admin.reassign — not built");
+  reassign(applicationId: string, toStaffId: string, actor: AuthUser) {
+    return this.applicationsService.reassignStaff(
+      applicationId,
+      toStaffId,
+      actor,
+    );
   }
 }
