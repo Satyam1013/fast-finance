@@ -19,6 +19,9 @@ const ALLOWED_MIME = new Set([
   "image/webp",
   "image/heic",
   "application/pdf",
+  // Commission-chart files (dsa/commission-files) are usually spreadsheets.
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — KYC scans / statements
@@ -29,6 +32,8 @@ const EXT: Record<string, string> = {
   "image/webp": ".webp",
   "image/heic": ".heic",
   "application/pdf": ".pdf",
+  "application/vnd.ms-excel": ".xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
 };
 
 /**

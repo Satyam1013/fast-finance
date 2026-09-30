@@ -2,6 +2,7 @@ export * from "./stage";
 export * from "./roles";
 export * from "./employment";
 export * from "./documents";
+export * from "./staff-designation";
 
 /** Lead / application status buckets shown to Partner — FR-PTR-13 / PRD P-07. */
 export enum LeadStatus {
@@ -50,4 +51,12 @@ export enum AuditAction {
   OfferSet = "OFFER_SET",
   OfferAccepted = "OFFER_ACCEPTED",
   OfferRejected = "OFFER_REJECTED",
+  // ── Admin panel (blocked/unblocked toggles) ──
+  CustomerBlocked = "CUSTOMER_BLOCKED",
+  CustomerUnblocked = "CUSTOMER_UNBLOCKED",
+  StaffBlocked = "STAFF_BLOCKED",
+  StaffUnblocked = "STAFF_UNBLOCKED",
+  StaffPasswordReset = "STAFF_PASSWORD_RESET",
+  PartnerBlocked = "PARTNER_BLOCKED",
+  PartnerUnblocked = "PARTNER_UNBLOCKED",
 }

@@ -11,9 +11,17 @@ import {
   NotificationDocument,
   NotificationType,
 } from "./schemas/notification.schema";
+import {
+  AdminBroadcast,
+  AdminBroadcastDocument,
+} from "./schemas/admin-broadcast.schema";
+import {
+  Customer,
+  CustomerDocument,
+} from "../customers/schemas/customer.schema";
 import { EventsService, DomainEvent } from "../events/events.service";
 import { Role } from "../common/constants";
-import { asString } from "../common/util/id";
+import { asString, toIdString } from "../common/util/id";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 
 interface CreateNotification {
@@ -37,6 +45,11 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     @InjectModel(Notification.name)
     private readonly notifications: Model<NotificationDocument>,
+    @InjectModel(AdminBroadcast.name)
+    private readonly broadcasts: Model<AdminBroadcastDocument>,
+    // Read-only — used only to fan an admin broadcast out to every customer.
+    @InjectModel(Customer.name)
+    private readonly customers: Model<CustomerDocument>,
     private readonly events: EventsService,
   ) {}
 
@@ -117,6 +130,50 @@ export class NotificationsService implements OnModuleInit {
     if (!res.matchedCount)
       throw new NotFoundException("Notification not found");
     return { success: true };
+  }
+
+  // ── Admin panel — broadcast to every customer ──
+
+  /**
+   * POST /admin/notifications. No push provider is wired yet (see CLAUDE.md
+   * "Still needs the business") — this persists a {@link Notification} row
+   * per customer for the in-app centre + SSE stream, and one
+   * {@link AdminBroadcast} row so the admin panel can list what it sent.
+   */
+  async broadcast(title: string, body: string) {
+    const customerIds = await this.customers.distinct("_id");
+    if (customerIds.length) {
+      await this.notifications.insertMany(
+        customerIds.map((id) => ({
+          userId: toIdString(id),
+          role: Role.Customer,
+          type: NotificationType.General,
+          title,
+          body,
+        })),
+      );
+    }
+    const record = await this.broadcasts.create({
+      title,
+      description: body,
+      sentCount: customerIds.length,
+    });
+    return {
+      success: true,
+      id: record.id,
+      sentCount: customerIds.length,
+    };
+  }
+
+  async adminList() {
+    const rows = await this.broadcasts.find().sort({ createdAt: -1 }).lean();
+    return {
+      results: rows.map((r) => ({
+        createdAt: r.createdAt,
+        title: r.title,
+        description: r.description,
+      })),
+    };
   }
 
   private async fromEvent(e: DomainEvent): Promise<void> {

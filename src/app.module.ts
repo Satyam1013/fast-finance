@@ -34,6 +34,7 @@ import { MastersModule } from "./masters/masters.module";
 import { GstModule } from "./gst/gst.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
+import { DsaModule } from "./dsa/dsa.module";
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { AdminModule } from "./admin/admin.module";
     GstModule,
     ReportsModule,
     AdminModule,
+    DsaModule,
   ],
   providers: [
     // Every route requires a valid access token unless marked @Public().

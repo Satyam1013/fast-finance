@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Banner, BannerDocument } from "./schemas/banner.schema";
@@ -109,8 +113,51 @@ export class ContentService {
 
   // ── Admin CRUD ──
 
-  createBanner(dto: Partial<Banner>) {
-    return this.banners.create(dto);
+  /** All banners (active + inactive) for the App Banner admin screen. */
+  async adminListBanners() {
+    const rows = await this.banners
+      .find()
+      .sort({ order: 1, createdAt: -1 })
+      .lean();
+    return rows.map((b) => this.presentBannerAdmin(b));
+  }
+
+  async createBanner(dto: Partial<Banner> & { redirect?: string }) {
+    const BANNER_LIMIT = 8;
+    if ((await this.banners.countDocuments()) >= BANNER_LIMIT) {
+      throw new BadRequestException({
+        success: false,
+        code: "BANNER_LIMIT_REACHED",
+        message: `You can have at most ${BANNER_LIMIT} banners — remove one before adding another.`,
+      });
+    }
+    const { redirect, ...rest } = dto;
+    const banner = await this.banners.create({
+      ...rest,
+      ctaUrl: dto.ctaUrl ?? redirect,
+    });
+    return this.presentBannerAdmin(banner.toObject());
+  }
+
+  /** `{active}` (native) or `{status}` (spec alias) — either flips the same flag. */
+  async setBannerStatus(id: string, active: boolean) {
+    const banner = await this.banners.findByIdAndUpdate(
+      id,
+      { active },
+      { new: true },
+    );
+    if (!banner) throw new NotFoundException("Banner not found");
+    return this.presentBannerAdmin(banner.toObject());
+  }
+
+  private presentBannerAdmin(b: Banner & { _id?: unknown; createdAt?: Date }) {
+    return {
+      id: String(b._id),
+      createdAt: b.createdAt ?? null,
+      imageUrl: this.storage.urlFor(b.imageRef) ?? null,
+      redirect: b.ctaUrl ?? null,
+      status: b.active,
+    };
   }
   createGalleryItem(dto: Partial<GalleryItem>) {
     return this.gallery.create(dto);

@@ -7,6 +7,10 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import type { Types } from "mongoose";
 import { Customer, CustomerDocument } from "./schemas/customer.schema";
+import {
+  RefreshToken,
+  RefreshTokenDocument,
+} from "../auth/schemas/refresh-token.schema";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 import { StorageService } from "../storage/storage.service";
 import {
@@ -19,6 +23,13 @@ import { toIdString } from "../common/util/id";
 import { AuditService } from "../audit/audit.service";
 import { CreateProfileDto } from "./dto/create-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+
+export interface CustomerAdminPanelFilters {
+  search?: string;
+  from?: string;
+  to?: string;
+  blocked?: string;
+}
 
 export interface ProfileUpload {
   buffer: Buffer;
@@ -43,12 +54,79 @@ export class CustomersService {
   constructor(
     @InjectModel(Customer.name)
     private readonly customers: Model<CustomerDocument>,
+    // Read/write here purely to kill sessions the instant a customer is
+    // blocked — same model AuthModule registers.
+    @InjectModel(RefreshToken.name)
+    private readonly refreshTokens: Model<RefreshTokenDocument>,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
   ) {}
 
   findById(id: string) {
     return this.customers.findById(id).lean();
+  }
+
+  /** Raw docs (Aadhaar/PAN selected, unmasked) for the admin-panel join —
+   * masking happens in `buildCustomerRow`, closer to the response shaping. */
+  queryForAdminPanel(filters: CustomerAdminPanelFilters) {
+    const q: Record<string, unknown> = {};
+    if (filters.search) {
+      const rx = new RegExp(filters.search.trim(), "i");
+      q.$or = [{ name: rx }, { mobile: rx }, { email: rx }];
+    }
+    if (filters.from || filters.to) {
+      q.createdAt = {
+        ...(filters.from ? { $gte: new Date(filters.from) } : {}),
+        ...(filters.to ? { $lte: new Date(filters.to) } : {}),
+      };
+    }
+    if (filters.blocked !== undefined) q.blocked = filters.blocked === "true";
+
+    // TODO: push pagination down to Mongo once the customer base outgrows
+    // this (mirrors the same TODO on the older `adminList` below).
+    return this.customers
+      .find(q)
+      .select("+aadhaar +pan")
+      .sort({ createdAt: -1 })
+      .limit(5000)
+      .lean();
+  }
+
+  countAll() {
+    return this.customers.countDocuments();
+  }
+
+  async setBlocked(id: string, blocked: boolean, actor: AuthUser) {
+    const c = await this.customers.findByIdAndUpdate(
+      id,
+      { blocked },
+      { new: true },
+    );
+    if (!c) throw new NotFoundException("Customer not found");
+    if (blocked) {
+      await this.refreshTokens.updateMany({ subjectId: id }, { revoked: true });
+    }
+    await this.audit.record({
+      action: blocked
+        ? AuditAction.CustomerBlocked
+        : AuditAction.CustomerUnblocked,
+      targetId: id,
+      targetType: "Customer",
+      actorId: actor.sub,
+      actorRole: actor.role,
+      actorName: actor.name,
+    });
+    return { success: true };
+  }
+
+  async setNote(id: string, note: string) {
+    const c = await this.customers.findByIdAndUpdate(
+      id,
+      { note },
+      { new: true },
+    );
+    if (!c) throw new NotFoundException("Customer not found");
+    return { success: true };
   }
 
   /** True once the mandatory Create-Profile fields are all present — gates FR-CUS-03. */

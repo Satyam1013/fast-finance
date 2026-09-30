@@ -580,6 +580,63 @@ export class ApplicationsService {
     };
   }
 
+  /**
+   * FR-ADM-07 / TC-SYNC-02 — reassign an application to another staff member.
+   * Mutates the application, so this stays in ApplicationsService even though
+   * it is called from AdminModule (CLAUDE.md: mutations to Application stay
+   * here; other modules only ever read it via a second schema registration).
+   */
+  async reassignStaff(
+    applicationId: string,
+    toStaffId: string,
+    actor: AuthUser,
+  ) {
+    const app = await this.applications.findById(applicationId);
+    if (!app) throw new NotFoundException("Application not found");
+    if (app.locked) {
+      throw new ForbiddenException("This application can no longer be changed");
+    }
+    const toStaff = await this.staff.findById(toStaffId);
+    if (!toStaff) throw new NotFoundException("Staff member not found");
+
+    const fromStaffId = app.staffId;
+    if (fromStaffId === toStaffId) return this.detail(app);
+
+    app.staffId = toStaffId;
+    await app.save();
+
+    await this.messaging.postSystem(
+      app.id,
+      `This application was reassigned to ${toStaff.name}.`,
+      [
+        app.customerId,
+        fromStaffId,
+        toStaffId,
+        ...(app.partnerId ? [app.partnerId] : []),
+      ],
+    );
+    await this.audit.record({
+      action: AuditAction.StaffReassigned,
+      targetId: app.id,
+      targetType: "Application",
+      actorId: actor.sub,
+      actorRole: actor.role,
+      actorName: actor.name,
+      before: { staffId: fromStaffId },
+      after: { staffId: toStaffId },
+    });
+    // No `customerId` here — a reassignment is an internal handoff, not
+    // something the customer needs a notification for (NotificationsService
+    // only fans out events that carry one).
+    this.events.publish({
+      audience: [fromStaffId, toStaffId],
+      type: "staff.reassigned",
+      applicationId: app.id,
+      payload: { message: `Reassigned to ${toStaff.name}` },
+    });
+    return this.detail(app);
+  }
+
   /** Placeholder kept for the (unbuilt) partner referral creation path. */
   startForPartner(): Promise<never> {
     throw new NotImplementedException(

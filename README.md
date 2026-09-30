@@ -57,15 +57,16 @@ All three return `{ accessToken, refreshToken }`. Rotate via `POST /auth/refresh
 | `documents` | upload, per-category checklist (Figma), manual bank, staff verify/reject | ✅ done (AA flagged off) |
 | `offers` | Loan Offer (Stage 3) — Staff/Partner/Admin set, Customer accept/reject | ✅ done |
 | `messaging` | customer↔staff chat + system stage messages | ✅ done |
-| `notifications` | per-user centre + domain-event fan-out | ✅ done |
-| `support` | FAQs + contact block | ✅ done |
+| `notifications` | per-user centre + domain-event fan-out + admin broadcast (`/admin/notifications`, no push provider yet) | ✅ done |
+| `support` | FAQs + contact block + support tickets (`/support/tickets`, `/admin/support/tickets`) | ✅ done |
 | `content` | banners, gallery, lenders + pincode search | ✅ done |
 | `tools` | `POST /tools/emi` reducing-balance calculator | ✅ done |
 | `commission` | calculate-once-on-disbursal, earnings | 🚧 skeleton (pure `compute()` done) |
-| `partners` `staff` | records + management | 🚧 skeleton (`partners.onboard`, `staff.create`, `staff.pickAssignee` done) |
+| `partners` `staff` | records + management + admin-panel CRUD (blocked, DSA↔staff assignment) | ✅ admin panel path done |
+| `dsa` | DSA content library — resources/CIBIL/commission-files/banking-links | ✅ done |
 | `gst` | monthly ledger, GST calc | 🚧 skeleton (`gstOn()` done) |
-| `reports` | 5 report types, PDF + Excel export | 🚧 skeleton |
-| `admin` | dashboard KPIs, reassignment | 🚧 skeleton (`overview` partial) |
+| `reports` | 5 report types, PDF + Excel export (FR-ADM-28..34) | 🚧 skeleton; admin-panel `stats`/`customer`/`dsa`/`staffs`/`export` (CSV) done separately |
+| `admin` | dashboard KPIs, reassignment, admin-panel Customers pipeline view | ✅ admin panel path done |
 
 `NotImplementedException` marks every unbuilt path, each with a `TODO(FR-…)`.
 
@@ -103,7 +104,12 @@ anything beyond a throwaway test.
 
 ## Open items blocking work (FRS §13 / PRD §14)
 
-MacroPage Connect API contract (WhatsApp OTP — `CommsService` has the wiring,
-needs the real endpoint/payload) · Account Aggregator provider · GST rate ·
-commission rates per product · lender/branch dataset for pincode search ·
-**"Type of Employment" option list** (`EmploymentCategory` is a placeholder).
+Account Aggregator provider · GST rate · commission rates per product ·
+lender/branch dataset for pincode search · **"Type of Employment" option
+list** (`EmploymentCategory` is a placeholder) · email/SMTP provider (admin
+password reset logs + dev-echoes the link instead) · push notification
+provider (FCM/APNs — admin broadcast is in-app/SSE only for now).
+
+See CLAUDE.md's "Admin panel surface" section for the full reconciliation
+against a frontend dev's from-scratch endpoint spec (path collisions resolved,
+security fixes made along the way, what's genuinely new vs. reused).

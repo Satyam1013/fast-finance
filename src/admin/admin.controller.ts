@@ -26,6 +26,12 @@ export class AdminController {
     return this.admin.overview();
   }
 
+  /** Admin panel home tile counts — this controller's own "admin/…" prefix. */
+  @Get("dashboard/stats")
+  stats() {
+    return this.admin.stats();
+  }
+
   /** FR-ADM-07 — reassign an application to another staff member. */
   @Post("applications/:id/reassign")
   reassign(
@@ -34,5 +40,20 @@ export class AdminController {
     @CurrentUser() actor: AuthUser,
   ) {
     return this.admin.reassign(id, dto.toStaffId, actor);
+  }
+}
+
+/** Bare `dashboard/stats` alias — the admin panel's originally-expected path. */
+@ApiTags("admin")
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
+@Roles(Role.Admin)
+@Controller("dashboard")
+export class DashboardController {
+  constructor(private readonly admin: AdminService) {}
+
+  @Get("stats")
+  stats() {
+    return this.admin.stats();
   }
 }

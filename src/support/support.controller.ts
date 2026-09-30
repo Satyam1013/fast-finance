@@ -10,11 +10,22 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { IsBoolean, IsString, MinLength } from "class-validator";
 import { SupportService } from "./support.service";
 import { CreateFaqDto, UpdateFaqDto } from "./dto/faq.dto";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
+import type { AuthUser } from "../common/interfaces/authenticated-request";
 import { Role } from "../common/constants";
+
+class CreateTicketDto {
+  @IsString() @MinLength(3) issue!: string;
+}
+
+class ResolveTicketDto {
+  @IsBoolean() resolved!: boolean;
+}
 
 @ApiTags("support")
 @ApiBearerAuth()
@@ -31,6 +42,37 @@ export class SupportController {
   @Get("support/faqs")
   faqs(@Query("category") category?: string) {
     return this.support.listActive(category);
+  }
+
+  /**
+   * FR-CUS-22-adjacent — raise a support ticket (Customer/DSA). Bare
+   * `GET /support?resolved=` collides with the Support screen above, so the
+   * admin panel's ticket list/resolve stay under `/admin/support/tickets`.
+   */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Customer, Role.Partner)
+  @Post("support/tickets")
+  createTicket(@CurrentUser() actor: AuthUser, @Body() dto: CreateTicketDto) {
+    return this.support.createTicket(actor, dto.issue);
+  }
+
+  // ── Admin — support tickets ──
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @Get("admin/support/tickets")
+  listTickets(@Query("resolved") resolved?: string) {
+    return this.support.adminListTickets(resolved);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @Patch("admin/support/tickets/:id")
+  resolveTicket(
+    @Param("id") id: string,
+    @Body() dto: ResolveTicketDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.support.resolveTicket(id, dto.resolved, actor);
   }
 
   // ── Admin — FAQ management ──

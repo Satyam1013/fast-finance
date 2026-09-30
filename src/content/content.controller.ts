@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -18,6 +19,7 @@ import {
   CreateBannerDto,
   CreateGalleryItemDto,
   CreateLenderDto,
+  SetBannerStatusDto,
 } from "./dto/content.dto";
 
 class PincodeQuery {
@@ -57,17 +59,33 @@ export class ContentController {
   }
 
   // ── Admin CRUD ──
+  // "app-banners" is the admin panel's expected bare path — no collision,
+  // since only /content/banners (customer, active-only) existed before.
 
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Post("admin/content/banners")
+  @Get(["admin/content/banners", "app-banners"])
+  listBanners() {
+    return this.content.adminListBanners();
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @Post(["admin/content/banners", "app-banners"])
   createBanner(@Body() dto: CreateBannerDto) {
     return this.content.createBanner(dto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Delete("admin/content/banners/:id")
+  @Patch(["admin/content/banners/:id", "app-banners/:id"])
+  setBannerStatus(@Param("id") id: string, @Body() dto: SetBannerStatusDto) {
+    return this.content.setBannerStatus(id, dto.status ?? dto.active ?? true);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @Delete(["admin/content/banners/:id", "app-banners/:id"])
   removeBanner(@Param("id") id: string) {
     return this.content.removeBanner(id);
   }

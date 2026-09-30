@@ -59,6 +59,10 @@ export class Partner {
   /** Set when this same person is also a customer — PRD §2.2 Edge Case. */
   @Prop({ index: true })
   linkedCustomerId?: string;
+
+  /** Admin-assigned Fast Finance point of contact for this DSA. */
+  @Prop({ index: true })
+  staffId?: string;
 }
 
 export const PartnerSchema = SchemaFactory.createForClass(Partner);

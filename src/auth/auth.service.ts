@@ -25,6 +25,10 @@ import {
   RefreshTokenDocument,
 } from "./schemas/refresh-token.schema";
 import { OtpRequest, OtpRequestDocument } from "./schemas/otp-request.schema";
+import {
+  PasswordResetToken,
+  PasswordResetTokenDocument,
+} from "./schemas/password-reset-token.schema";
 import { NotificationsService } from "../notifications/notifications.service";
 import { CommsService, OtpDeliveryError } from "../comms/comms.service";
 
@@ -46,6 +50,8 @@ export class AuthService {
     private readonly refreshTokens: Model<RefreshTokenDocument>,
     @InjectModel(OtpRequest.name)
     private readonly otpRequests: Model<OtpRequestDocument>,
+    @InjectModel(PasswordResetToken.name)
+    private readonly passwordResetTokens: Model<PasswordResetTokenDocument>,
     private readonly notifications: NotificationsService,
     private readonly comms: CommsService,
   ) {}
@@ -55,6 +61,15 @@ export class AuthService {
   async requestOtp(
     mobile: string,
   ): Promise<{ success: true; devCode?: string }> {
+    const existing = await this.customers.findOne({ mobile }).lean();
+    if (existing?.blocked) {
+      throw new UnauthorizedException({
+        success: false,
+        code: "ACCOUNT_BLOCKED",
+        message: "This account has been blocked. Contact support.",
+      });
+    }
+
     const ttl = this.config.get<number>("OTP_TTL_SECONDS", 300);
 
     // Basic anti-abuse: one live OTP per mobile at a time.
@@ -141,6 +156,13 @@ export class AuthService {
     await otp.save();
 
     let customer = await this.customers.findOne({ mobile });
+    if (customer?.blocked) {
+      throw new UnauthorizedException({
+        success: false,
+        code: "ACCOUNT_BLOCKED",
+        message: "This account has been blocked. Contact support.",
+      });
+    }
     if (!customer) {
       customer = await this.customers.create({ mobile, name: "" });
       await this.notifications.welcome(customer.id);
@@ -226,6 +248,75 @@ export class AuthService {
     };
   }
 
+  /**
+   * Admin panel "forgot password" — POST /auth/reset-password. No user
+   * enumeration: the response is identical whether or not the email exists.
+   *
+   * TODO(email): no SMTP/email provider is wired yet (see CLAUDE.md "Still
+   * needs the business" — same shape of gap as WhatsApp OTP before MacroPage
+   * was wired). The token is logged server-side, and — outside production
+   * only — echoed back as `devResetToken` so the flow can be exercised
+   * end-to-end before a real provider is chosen.
+   */
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ success: true; message: string; devResetToken?: string }> {
+    const message =
+      "If that email is registered, a password reset link has been sent.";
+    const s = await this.staff.findOne({
+      email: email.toLowerCase().trim(),
+      active: true,
+    });
+    if (!s) return { success: true, message };
+
+    const token = randomBytes(32).toString("hex");
+    await this.passwordResetTokens.create({
+      staffId: s.id,
+      tokenHash: sha256(token),
+      expiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+
+    this.logger.warn(
+      `Password reset requested for ${s.email} — token (dev/log only): ${token}`,
+    );
+
+    const isProd = this.config.get<string>("NODE_ENV") === "production";
+    return isProd
+      ? { success: true, message }
+      : { success: true, message, devResetToken: token };
+  }
+
+  async confirmPasswordReset(
+    token: string,
+    password: string,
+  ): Promise<{ success: true }> {
+    const record = await this.passwordResetTokens.findOne({
+      tokenHash: sha256(token),
+    });
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      throw new UnauthorizedException({
+        success: false,
+        code: "RESET_TOKEN_INVALID",
+        message: "This reset link is invalid or has expired.",
+      });
+    }
+
+    const rounds = this.config.get<number>("BCRYPT_ROUNDS", 12);
+    await this.staff.updateOne(
+      { _id: record.staffId },
+      { passwordHash: await bcrypt.hash(password, rounds) },
+    );
+    record.usedAt = new Date();
+    await record.save();
+
+    // A changed password should kill every existing session for this staff.
+    await this.refreshTokens.updateMany(
+      { subjectId: record.staffId },
+      { revoked: true },
+    );
+    return { success: true };
+  }
+
   // ─────────────────────────────── Token lifecycle ─────────────────────────
 
   async refresh(presented: string): Promise<TokenPair> {
@@ -275,7 +366,9 @@ export class AuthService {
     switch (role) {
       case Role.Customer: {
         const c = await this.customers.findById(sub);
-        return c ? { sub: c.id, role, name: c.name, mobile: c.mobile } : null;
+        return c && !c.blocked
+          ? { sub: c.id, role, name: c.name, mobile: c.mobile }
+          : null;
       }
       case Role.Partner: {
         const p = await this.partners.findById(sub);

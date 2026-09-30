@@ -9,7 +9,8 @@ export interface DomainEvent {
     | "application.rejected"
     | "document.updated"
     | "message.created"
-    | "commission.calculated";
+    | "commission.calculated"
+    | "staff.reassigned";
   applicationId?: string;
   /** The customer this application belongs to — used for notification fan-out. */
   customerId?: string;
