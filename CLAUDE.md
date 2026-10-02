@@ -70,8 +70,12 @@ are separate deliverables built by others against this API's OpenAPI spec
   array + `STAGE_CUSTOMER_MESSAGE` + checklist + assigned-staff contact card.
 - `StorageService` picks a driver from `STORAGE_DRIVER` (`local` → `./uploads`,
   `s3` → DigitalOcean Spaces / any S3). Objects are private; reads go through the
-  auth-gated `GET /files/*key` proxy (per-record scoping is a TODO). Admin uploads
-  CMS images via `POST /admin/assets` then references the returned key.
+  auth-gated `GET /files/*key` proxy (per-record scoping is a TODO). Key prefix
+  marks who uploaded it: `admin/...` (CMS assets via `POST /admin/assets`,
+  product images, DSA resources/commission files — all Admin-only uploads) vs
+  `customers/<id>/...` (Create/Edit Profile) vs `documents/<applicationId>/...`
+  (KYC/bank-statement uploads). Keep new upload call sites consistent with this
+  split rather than inventing a new top-level prefix.
 - `NotificationsService` subscribes to `EventsService.stream()` and fans
   `stage.changed` / `application.rejected` out to per-customer rows — publishers
   still publish once.
@@ -143,7 +147,7 @@ same pattern as the customer-app aliases (`auth.controller.ts`,
   application), joined with their **latest** application for
   `loan`/`loanAmount`/`status`/`staff`/`onboard`/`dsa`. `AdminCustomersService`
   (in `admin/`, not `customers/`) does the join — it needs to both read
-  Customer data and *mutate* Application data (status changes, staff
+  Customer data and _mutate_ Application data (status changes, staff
   reassignment), and `CustomersModule` can't import `ApplicationsModule`
   (cycle — see the cross-module rule above), so the join+mutation orchestration
   lives one level up instead, in `AdminModule`, which imports both. The Customer
@@ -175,7 +179,7 @@ same pattern as the customer-app aliases (`auth.controller.ts`,
   - Every blocking service also revokes the account's refresh tokens (each of
     `CustomersModule`/`StaffModule`/`PartnersModule` registers `RefreshToken`
     a second time to do this) — belt-and-braces, since `resolveSubject`
-    already blocks the *next* request either way.
+    already blocks the _next_ request either way.
 - **Staffs (`/staffs`)**, **DSA (`/dsas` + `/dsa/*`)** — `Staff.designation`
   (Junior/Senior/Team Lead/Manager — `common/constants/staff-designation.ts`)
   is new and separate from the existing `staffRole` (which drives
@@ -188,7 +192,7 @@ same pattern as the customer-app aliases (`auth.controller.ts`,
   (same caveat as Aadhaar/PAN in `customer.schema.ts` — encrypt before this
   carries anything real). Never returned by `POST`, `PATCH` or `GET` — a
   freshly-`.create()`d in-memory doc still carries a `select:false` field
-  (that flag only suppresses *queries*), so the create path strips it by hand.
+  (that flag only suppresses _queries_), so the create path strips it by hand.
   The same gap existed for `Staff.passwordHash` on `POST /staffs` from before
   this branch — fixed here too.
 - **Reset password (`/auth/reset-password[/confirm]`)** — no email/SMTP
@@ -212,13 +216,13 @@ same pattern as the customer-app aliases (`auth.controller.ts`,
   directions, not a rename); added the missing `GET` admin list and `PATCH`
   status toggle, and the spec's "max 8" cap (enforced on create, total count).
 - **Products** — `ProductKind` gained `INVESTMENT`/`CREDIT_CARD`. `POST`/`PATCH
-  /admin/products` now also accept a multipart `image` file. Added `DELETE
-  /admin/products/:id` — hard delete, but refused (`PRODUCT_IN_USE`) once any
+/admin/products` now also accept a multipart `image` file. Added `DELETE
+/admin/products/:id` — hard delete, but refused (`PRODUCT_IN_USE`) once any
   Application references the product; deactivating (`active:false`, already
   existed) is still the normal way to retire one (FR-ADM-21/22).
 - **Reports (`/reports/*`)** — `stats`/`customer`/`dsa`/`staffs`/`export` are
   new, sit alongside (don't replace) the older FR-ADM-28..34 `/admin/reports/
-  :type` skeleton (still `NotImplementedException` — 5-report PDF/Excel job,
+:type` skeleton (still `NotImplementedException` — 5-report PDF/Excel job,
   unrelated ask). Plain CSV (`common/util/csv.ts`), not PDF/Excel — exceljs
   is already a dependency (used by `scripts/gen-api-xlsx.mjs`) but is overkill
   for a flat CSV.

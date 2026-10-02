@@ -68,7 +68,7 @@ export class DsaContentService {
       });
     }
     const fileRef = file
-      ? (await this.storage.save("dsa/resources", file)).key
+      ? (await this.storage.save("admin/dsa/resources", file)).key
       : undefined;
     return this.resources.create({
       type: dto.type,
@@ -118,7 +118,7 @@ export class DsaContentService {
   }
 
   async createCommissionFile(name: string, file: UploadedFile) {
-    const saved = await this.storage.save("dsa/commission", file);
+    const saved = await this.storage.save("admin/dsa/commission", file);
     return this.commissionFiles.create({
       name,
       fileRef: saved.key,

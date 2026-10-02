@@ -81,7 +81,7 @@ export class CatalogueService {
       });
     }
     const imageRef = image
-      ? (await this.storage.save("products", image)).key
+      ? (await this.storage.save("admin/products", image)).key
       : undefined;
     const product = await this.products.create({
       ...dto,
@@ -104,7 +104,7 @@ export class CatalogueService {
     const wasActive = product.active;
     Object.assign(product, dto);
     if (image) {
-      product.imageRef = (await this.storage.save("products", image)).key;
+      product.imageRef = (await this.storage.save("admin/products", image)).key;
     }
     await product.save();
 
