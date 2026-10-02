@@ -35,7 +35,7 @@ export class FilesController {
   @ApiConsumes("multipart/form-data")
   @UseInterceptors(FileInterceptor("file", uploadOptions))
   async uploadAsset(@UploadedFile() file: Express.Multer.File | undefined) {
-    const saved = await this.storage.save("content", {
+    const saved = await this.storage.save("admin/content", {
       buffer: file!.buffer,
       mimetype: file!.mimetype,
       size: file!.size,
