@@ -77,11 +77,18 @@ const BASE: DocumentType[] = [
   DocumentType.Selfie,
 ];
 
+// TODO(business): Bank Statement is temporarily OFF the mandatory checklist
+// (commented out below) at the user's request, while AA is still unregistered
+// and manual entry is slow to test end-to-end. It's still fully submittable
+// via POST .../documents/bank/manual — just not required before `submit`.
+// Re-enable by uncommenting the DocumentType.BankStatement line in each list
+// once the business wants it mandatory again.
+
 /** Personal Loan — salaried applicant. */
 const PERSONAL_LOAN_SALARIED: DocumentType[] = [
   ...BASE,
   DocumentType.SalarySlip,
-  DocumentType.BankStatement,
+  // DocumentType.BankStatement,
   DocumentType.EmploymentId,
   DocumentType.Address,
   DocumentType.PassportPhoto,
@@ -91,7 +98,7 @@ const PERSONAL_LOAN_SALARIED: DocumentType[] = [
 /** Personal Loan (self-employed) and Business Loan — same checklist (Figma). */
 const SELF_EMPLOYED_OR_BUSINESS: DocumentType[] = [
   ...BASE,
-  DocumentType.BankStatement,
+  // DocumentType.BankStatement,
   DocumentType.Itr,
   DocumentType.BusinessProof,
   DocumentType.Address,
@@ -108,7 +115,7 @@ const HOME_OR_MORTGAGE_LOAN: DocumentType[] = [
   DocumentType.PassportPhoto,
   DocumentType.Cheque,
   DocumentType.IncomeProof,
-  DocumentType.BankStatement,
+  // DocumentType.BankStatement,
   DocumentType.PropertyPapers,
   DocumentType.PropertyMapEstimate,
   DocumentType.CoApplicantAadhaar,
@@ -120,7 +127,7 @@ const HOME_OR_MORTGAGE_LOAN: DocumentType[] = [
 const CAR_LOAN: DocumentType[] = [
   ...BASE,
   DocumentType.Address,
-  DocumentType.BankStatement,
+  // DocumentType.BankStatement,
   DocumentType.SalarySlip,
   DocumentType.PassportPhoto,
   DocumentType.VehicleRc,
@@ -142,7 +149,7 @@ const GENERIC: DocumentType[] = [
   ...BASE,
   DocumentType.Address,
   DocumentType.SalarySlip,
-  DocumentType.BankStatement,
+  // DocumentType.BankStatement,
 ];
 
 /**
