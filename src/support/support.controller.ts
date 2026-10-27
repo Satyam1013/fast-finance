@@ -76,30 +76,33 @@ export class SupportController {
   }
 
   // ── Admin — FAQ management ──
+  // "faqs" is the admin panel's originally-expected bare path — nothing else
+  // used it (the customer-facing list is at "support/faqs" above), so it's a
+  // true alias, not a collision.
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Get("admin/support/faqs")
+  @Get(["admin/support/faqs", "faqs"])
   listAll() {
     return this.support.listAll();
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Post("admin/support/faqs")
+  @Post(["admin/support/faqs", "faqs"])
   create(@Body() dto: CreateFaqDto) {
     return this.support.create(dto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Patch("admin/support/faqs/:id")
+  @Patch(["admin/support/faqs/:id", "faqs/:id"])
   update(@Param("id") id: string, @Body() dto: UpdateFaqDto) {
     return this.support.update(id, dto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @Delete("admin/support/faqs/:id")
+  @Delete(["admin/support/faqs/:id", "faqs/:id"])
   remove(@Param("id") id: string) {
     return this.support.remove(id);
   }

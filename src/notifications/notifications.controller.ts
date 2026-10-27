@@ -48,13 +48,27 @@ export class NotificationsController {
   remove(@Param("id") id: string, @CurrentUser() user: AuthUser) {
     return this.notifications.remove(id, user);
   }
+
+  /**
+   * Admin panel — broadcast to every customer, the admin panel's originally-
+   * expected bare path. Bare `GET /notifications` above is already the
+   * caller's own notification centre and can't be reused (different shape),
+   * but no bare `POST /notifications` existed, so this one is a true alias
+   * for `POST /admin/notifications` below, not a collision.
+   */
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @Post()
+  broadcastAlias(@Body() dto: BroadcastDto) {
+    return this.notifications.broadcast(dto.title, dto.description);
+  }
 }
 
 /**
  * Admin panel — broadcast to every customer. A separate controller (its own
- * path prefix) because bare `GET/POST /notifications` above is already the
- * caller's own notification centre — this lives under `/admin/notifications`
- * only, no bare alias.
+ * path prefix) because the admin list (`GET /admin/notifications`) can't live
+ * on NotificationsController above — bare `GET /notifications` there is
+ * already the caller's own notification centre.
  */
 @ApiTags("notifications")
 @ApiBearerAuth()

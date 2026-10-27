@@ -12,6 +12,7 @@ import {
 } from "./schemas/gallery-item.schema";
 import { Lender, LenderDocument } from "./schemas/lender.schema";
 import { StorageService } from "../storage/storage.service";
+import { parseBase64Upload } from "../common/util/base64-upload";
 
 @Injectable()
 export class ContentService {
@@ -122,7 +123,9 @@ export class ContentService {
     return rows.map((b) => this.presentBannerAdmin(b));
   }
 
-  async createBanner(dto: Partial<Banner> & { redirect?: string }) {
+  async createBanner(
+    dto: Partial<Banner> & { redirect?: string; image?: string },
+  ) {
     const BANNER_LIMIT = 8;
     if ((await this.banners.countDocuments()) >= BANNER_LIMIT) {
       throw new BadRequestException({
@@ -131,9 +134,22 @@ export class ContentService {
         message: `You can have at most ${BANNER_LIMIT} banners — remove one before adding another.`,
       });
     }
-    const { redirect, ...rest } = dto;
+    const { redirect, image, ...rest } = dto;
+    const uploaded = image ? parseBase64Upload(image) : null;
+    const imageRef = uploaded
+      ? (await this.storage.save("admin/content", uploaded)).key
+      : dto.imageRef;
+    if (!imageRef) {
+      throw new BadRequestException({
+        success: false,
+        code: "IMAGE_REQUIRED",
+        message: "Send imageRef (from POST /admin/assets) or image (base64).",
+      });
+    }
     const banner = await this.banners.create({
       ...rest,
+      title: dto.title ?? "",
+      imageRef,
       ctaUrl: dto.ctaUrl ?? redirect,
     });
     return this.presentBannerAdmin(banner.toObject());

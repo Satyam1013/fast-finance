@@ -46,9 +46,6 @@ export class CatalogueController {
   }
 
   // ── Admin only — "Manage" (FRS §2.2 / §7.5) ──
-  // Note: the admin panel's `GET /products?search=&active=` collides with the
-  // customer-facing route above, so admin CRUD lives under /admin/products
-  // (search/active filters added here, not on the bare path).
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
   @Get("admin/products")
@@ -107,6 +104,76 @@ export class CatalogueController {
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
   @Delete("admin/products/:id")
+  remove(@Param("id") id: string) {
+    return this.catalogue.remove(id);
+  }
+}
+
+/**
+ * Bare "products" — the admin panel's originally-expected path. A separate
+ * controller (no class-level prefix) because /catalogue/products above is the
+ * customer-facing active-only list; adding "products" as a method path on
+ * CatalogueController itself would collide with that route (its own
+ * "catalogue" prefix would make it a literal duplicate, not a true bare path).
+ */
+@ApiTags("catalogue")
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
+@Roles(Role.Admin)
+@Controller("products")
+export class AdminProductsController {
+  constructor(private readonly catalogue: CatalogueService) {}
+
+  @Get()
+  listAll(@Query() query: ProductListQuery) {
+    return this.catalogue.listAll(query);
+  }
+
+  @Post()
+  @ApiConsumes("multipart/form-data", "application/json")
+  @UseInterceptors(FileInterceptor("image", uploadOptions))
+  create(
+    @Body() dto: CreateProductDto,
+    @UploadedFile() image?: Express.Multer.File,
+  ) {
+    return this.catalogue.create(
+      dto,
+      image
+        ? {
+            buffer: image.buffer,
+            mimetype: image.mimetype,
+            size: image.size,
+            originalname: image.originalname,
+          }
+        : undefined,
+    );
+  }
+
+  @Patch(":id")
+  @ApiConsumes("multipart/form-data", "application/json")
+  @UseInterceptors(FileInterceptor("image", uploadOptions))
+  update(
+    @Param("id") id: string,
+    @Body() dto: UpdateProductDto,
+    @CurrentUser() actor: AuthUser,
+    @UploadedFile() image?: Express.Multer.File,
+  ) {
+    return this.catalogue.update(
+      id,
+      dto,
+      actor,
+      image
+        ? {
+            buffer: image.buffer,
+            mimetype: image.mimetype,
+            size: image.size,
+            originalname: image.originalname,
+          }
+        : undefined,
+    );
+  }
+
+  @Delete(":id")
   remove(@Param("id") id: string) {
     return this.catalogue.remove(id);
   }
