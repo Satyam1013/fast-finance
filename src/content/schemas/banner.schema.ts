@@ -9,7 +9,8 @@ export type BannerDocument = HydratedDocument<Banner> & {
 /** Home-screen promotional / cross-sell banner — FR-CUS-06 / PRD C (Could). */
 @Schema({ timestamps: true, collection: "banners" })
 export class Banner {
-  @Prop({ required: true, trim: true })
+  /** Optional — the admin panel's Add Banner form only collects image + redirect. */
+  @Prop({ trim: true, default: "" })
   title!: string;
 
   @Prop({ trim: true })

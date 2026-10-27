@@ -6,6 +6,7 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, type Types } from "mongoose";
 import {
+  CommissionType,
   Product,
   ProductDocument,
   ProductKind,
@@ -19,6 +20,7 @@ import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../common/constants";
 import { StorageService } from "../storage/storage.service";
 import { toIdString } from "../common/util/id";
+import { parseBase64Upload } from "../common/util/base64-upload";
 import type { AuthUser } from "../common/interfaces/authenticated-request";
 import type { UploadedFile } from "../common/util/upload";
 
@@ -31,6 +33,15 @@ export function deriveProductCode(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
   return (letters || name.slice(0, 2)).toUpperCase().slice(0, 6);
+}
+
+/** "11% - 11%" / "10%-15%" -> [10, 15]. Returns null if it doesn't parse. */
+function parseRateRange(rate: string): [number, number] | null {
+  const nums = rate.match(/\d+(\.\d+)?/g);
+  if (!nums?.length) return null;
+  const min = Number(nums[0]);
+  const max = Number(nums[1] ?? nums[0]);
+  return Number.isFinite(min) && Number.isFinite(max) ? [min, max] : null;
 }
 
 @Injectable()
@@ -71,6 +82,18 @@ export class CatalogueService {
     return this.present(product);
   }
 
+  /** Resolve an image from (in priority order) a multipart file, a base64
+   * `image` field, or an already-uploaded `imageRef` key — admin screens use
+   * all three depending on how their form is built. */
+  private async resolveImageRef(
+    dto: Pick<CreateProductDto, "image" | "imageRef">,
+    file?: UploadedFile,
+  ): Promise<string | undefined> {
+    const toSave = file ?? (dto.image ? parseBase64Upload(dto.image) : null);
+    if (toSave) return (await this.storage.save("admin/products", toSave)).key;
+    return dto.imageRef;
+  }
+
   async create(dto: CreateProductDto, image?: UploadedFile) {
     const code = (dto.code ?? deriveProductCode(dto.name)).toUpperCase();
     if (await this.products.exists({ code })) {
@@ -80,13 +103,29 @@ export class CatalogueService {
         message: `Product code "${code}" is already in use.`,
       });
     }
-    const imageRef = image
-      ? (await this.storage.save("admin/products", image)).key
-      : undefined;
+    const [rateMin, rateMax] = dto.rate ? (parseRateRange(dto.rate) ?? []) : [];
+    const interestRateMin = dto.interestRateMin ?? rateMin;
+    const interestRateMax = dto.interestRateMax ?? rateMax ?? interestRateMin;
+    if (interestRateMin === undefined) {
+      throw new BadRequestException({
+        success: false,
+        code: "VALIDATION_ERROR",
+        message:
+          "Send interestRateMin/interestRateMax, or a parseable rate string.",
+      });
+    }
+
+    const imageRef = await this.resolveImageRef(dto, image);
     const product = await this.products.create({
-      ...dto,
+      name: dto.name,
       code,
-      kind: dto.kind ?? ProductKind.Loan,
+      kind: dto.kind ?? dto.type ?? ProductKind.Loan,
+      subtitle: dto.subtitle,
+      interestRateMin,
+      interestRateMax,
+      processingFee: dto.processingFee,
+      commissionType: dto.commissionType ?? CommissionType.Percentage,
+      commissionValue: dto.commissionValue ?? 0,
       imageRef,
     });
     return this.presentAdmin(product.toObject());
@@ -102,10 +141,15 @@ export class CatalogueService {
     if (!product) throw new NotFoundException("Product not found");
 
     const wasActive = product.active;
-    Object.assign(product, dto);
-    if (image) {
-      product.imageRef = (await this.storage.save("admin/products", image)).key;
+    const { type, rate, image: _image, ...rest } = dto;
+    Object.assign(product, rest);
+    if (type && !dto.kind) product.kind = type;
+    if (rate && dto.interestRateMin === undefined) {
+      const parsed = parseRateRange(rate);
+      if (parsed) [product.interestRateMin, product.interestRateMax] = parsed;
     }
+    const resolvedImageRef = await this.resolveImageRef(dto, image);
+    if (resolvedImageRef) product.imageRef = resolvedImageRef;
     await product.save();
 
     if (dto.active !== undefined && dto.active !== wasActive) {

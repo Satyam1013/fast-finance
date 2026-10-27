@@ -14,19 +14,31 @@ import {
 import { LenderKind } from "../schemas/lender.schema";
 
 export class CreateBannerDto {
-  @ApiProperty({ example: "Take Control of Your Finances" })
+  /** Optional — the admin panel's Add Banner form is image + redirect only,
+   * no title field. Defaults to "" when omitted. */
+  @ApiPropertyOptional({ example: "Take Control of Your Finances" })
+  @IsOptional()
   @IsString()
-  @MinLength(2)
-  title!: string;
+  title?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   subtitle?: string;
 
-  @ApiProperty({ description: "Asset key from POST /admin/assets" })
+  /** Already-uploaded key from POST /admin/assets — one of imageRef/image is required. */
+  @ApiPropertyOptional({ description: "Asset key from POST /admin/assets" })
+  @IsOptional()
   @IsString()
-  imageRef!: string;
+  imageRef?: string;
+
+  /** Alternative to imageRef — a `data:<mime>;base64,...` string, uploaded for you. */
+  @ApiPropertyOptional({
+    description: "data:<mime>;base64,... — alternative to imageRef.",
+  })
+  @IsOptional()
+  @IsString()
+  image?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
